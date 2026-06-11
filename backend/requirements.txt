@@ -1,0 +1,41 @@
+# Web framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+
+# Data validation
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# Async task queue
+celery==5.3.6
+redis==5.0.1
+
+# File handling
+python-multipart==0.0.6
+aiofiles==23.2.1
+
+# Database
+sqlalchemy==2.0.25
+
+# Utils
+python-dotenv==1.0.0
+httpx==0.26.0
+
+# Audio/Video processing
+faster-whisper==1.0.3
+soundfile==0.12.1
+ffmpeg-python==0.2.0
+
+# Speaker diarization
+pyannote.audio==3.1.1
+
+# Computer Vision
+opencv-python==4.13.0.92
+Pillow==10.2.0
+
+# ML / Embeddings
+transformers==4.37.2
+qdrant-client==1.7.3
+
+# Numpy (pyannote 4.x cần >= 2.0)
+numpy>=2.0

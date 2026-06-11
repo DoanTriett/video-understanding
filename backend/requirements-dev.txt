@@ -1,0 +1,8 @@
+ruff
+mypy
+pytest
+pytest-cov
+pytest-asyncio
+httpx
+types-redis
+pre-commit
