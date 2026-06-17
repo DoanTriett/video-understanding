@@ -1,32 +1,36 @@
-from workers.celery_app import celery_app
-from app.store import get_job, update_job
-from app.models.video import JobStatus, VideoType
+import json
+import os
+
+from app.config import settings
+from app.db import crud  # ← Postgres operations
+from app.db.session import SessionLocal  # ← Postgres session
+from app.models.video import VideoType
+from app.pipeline.meeting.pipeline import run_meeting_pipeline
 from app.pipeline.shared.audio_extractor import extract_audio
 from app.pipeline.shared.transcriber import transcribe
-from app.pipeline.meeting.pipeline import run_meeting_pipeline
-from app.config import settings
-import os, json
+from app.store import delete_progress, set_progress  # ← chỉ dùng progress
+from workers.celery_app import celery_app
+
 
 @celery_app.task(bind=True, max_retries=3)
-def process_video(self, video_id: str):
-    try:
-        job = get_job(video_id)
-        if not job:
-            raise ValueError(f"Job {video_id} not found")
+def process_video(self, video_id: str, file_path: str, video_type: str):
+    # Mở DB session — Celery worker là process riêng, cần session riêng
+    db = SessionLocal()
 
+    try:
         work_dir = os.path.join(settings.upload_dir, video_id)
         os.makedirs(work_dir, exist_ok=True)
 
         # ── Bước 1: Extract audio ──────────────────
-        update_job(video_id, status=JobStatus.PROCESSING, progress_percent=10)
+        set_progress(video_id, stage="extracting_audio", pct=10)
         print(f"[{video_id}] Extracting audio...")
-        audio_path = extract_audio(job["file_path"], work_dir)
-        update_job(video_id, progress_percent=25)
+        audio_path = extract_audio(file_path, work_dir)
 
         # ── Bước 2: Transcribe ─────────────────────
+        set_progress(video_id, stage="transcribing", pct=25)
         print(f"[{video_id}] Transcribing...")
-        update_job(video_id, progress_percent=30)
         result = transcribe(audio_path)
+
         transcript_path = os.path.join(work_dir, "transcript.json")
         transcript_data = {
             "language": result.language,
@@ -36,57 +40,58 @@ def process_video(self, video_id: str):
                     "text": seg.text,
                     "start": seg.start,
                     "end": seg.end,
-                    "words": [{"word": w.word, "start": w.start, "end": w.end}
-                              for w in seg.words]
+                    "words": [{"word": w.word, "start": w.start, "end": w.end} for w in seg.words],
                 }
                 for seg in result.segments
-            ]
+            ],
         }
         with open(transcript_path, "w", encoding="utf-8") as f:
             json.dump(transcript_data, f, ensure_ascii=False, indent=2)
-        update_job(video_id, progress_percent=40, transcript_path=transcript_path)
 
-        # ── Bước 3: Meeting Pipeline ────────────────
-        video_type = job.get("video_type", VideoType.UNKNOWN)
+        # ── Bước 3: Pipeline theo video type ───────
+        set_progress(video_id, stage="running_pipeline", pct=40)
+
         if video_type in (VideoType.MEETING, VideoType.UNKNOWN):
             print(f"[{video_id}] Running meeting pipeline...")
 
             def update_progress(pct):
-                update_job(video_id, progress_percent=40 + int(pct * 0.55))
+                set_progress(video_id, stage="meeting_pipeline", pct=40 + int(pct * 0.55))
 
             chunks = run_meeting_pipeline(
                 video_id=video_id,
-                video_path=job["file_path"],
+                video_path=file_path,
                 audio_path=audio_path,
                 transcript_path=transcript_path,
                 work_dir=work_dir,
-                update_progress_fn=update_progress
-            )
-            update_job(video_id,
-                chunks_path=os.path.join(work_dir, "chunks.json"),
-                num_chunks=len(chunks)
+                update_progress_fn=update_progress,
             )
 
-        # ── Xóa error_message cũ khi thành công ──
-        update_job(video_id,
-            status=JobStatus.DONE,
-            progress_percent=100,
-            error_message=None      # ← quan trọng
-        )
+            # ← Lưu chunks vào Postgres (thay vì chỉ lưu path file)
+            set_progress(video_id, stage="saving_to_db", pct=95)
+            crud.save_chunks(db, video_id, chunks)
+
+        # ── Done: ghi Postgres, xóa Redis ──────────
+        set_progress(video_id, stage="done", pct=100)
+        crud.update_video_status(db, video_id, status="done", progress=100)
+        delete_progress(video_id)  # ← xóa Redis key, không cần nữa
         print(f"[{video_id}] All done!")
 
     except ImportError as exc:
-        # k2_fsa và speechbrain lazy import lỗi trên Windows
-        # Không set FAILED vì retry lần 2 sẽ tự chạy được
         if "k2_fsa" in str(exc) or "LazyModule" in str(exc):
             print(f"[{video_id}] Known import warning (k2_fsa), retrying...")
+            db.close()
             raise self.retry(exc=exc, countdown=60)
-        # ImportError khác → xử lý như lỗi thật
-        if get_job(video_id):
-            update_job(video_id, status=JobStatus.FAILED, error_message=str(exc))
+        # ImportError khác → failed thật
+        crud.update_video_status(db, video_id, status="failed", error=str(exc))
+        delete_progress(video_id)
+        db.close()
         raise
 
     except Exception as exc:
-        if get_job(video_id):
-            update_job(video_id, status=JobStatus.FAILED, error_message=str(exc))
+        crud.update_video_status(db, video_id, status="failed", error=str(exc))
+        delete_progress(video_id)
+        db.close()
         raise self.retry(exc=exc, countdown=60)
+
+    finally:
+        db.close()

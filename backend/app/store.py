@@ -1,34 +1,33 @@
 import json
+
 import redis
+
 from app.config import settings
 
-# Redis client dùng chung
 redis_client = redis.from_url(settings.redis_url, decode_responses=True)
 
-JOB_TTL = 60 * 60 * 24  # giữ job data 24 giờ
+PROGRESS_TTL = 60 * 60 * 24  # 24 giờ — tự xóa nếu worker chết không clean up được
 
-def set_job(video_id: str, data: dict):
-    """Lưu job vào Redis"""
-    # Convert datetime sang string nếu có
-    serializable = {}
-    for k, v in data.items():
-        if hasattr(v, 'isoformat'):  # datetime object
-            serializable[k] = v.isoformat()
-        else:
-            serializable[k] = v
-    redis_client.setex(f"job:{video_id}", JOB_TTL, json.dumps(serializable))
+# ─────────────────────────────────────────
+# PHẦN 1: Redis — chỉ dùng cho live progress
+# ─────────────────────────────────────────
 
-def get_job(video_id: str) -> dict | None:
-    """Lấy job từ Redis"""
-    raw = redis_client.get(f"job:{video_id}")
+
+def set_progress(video_id: str, stage: str, pct: int):
+    """Celery task gọi cái này liên tục để update tiến độ."""
+    redis_client.setex(
+        f"progress:{video_id}", PROGRESS_TTL, json.dumps({"stage": stage, "pct": pct})
+    )
+
+
+def get_progress(video_id: str) -> dict | None:
+    """Trả về None nếu không có key — nghĩa là task không đang chạy."""
+    raw = redis_client.get(f"progress:{video_id}")
     if not raw:
         return None
     return json.loads(raw)
 
-def update_job(video_id: str, **kwargs):
-    """Update một vài fields của job"""
-    job = get_job(video_id)
-    if not job:
-        raise KeyError(f"Job {video_id} not found")
-    job.update(kwargs)
-    redis_client.setex(f"job:{video_id}", JOB_TTL, json.dumps(job))
+
+def delete_progress(video_id: str):
+    """Gọi khi task done hoặc failed — dọn dẹp key Redis."""
+    redis_client.delete(f"progress:{video_id}")

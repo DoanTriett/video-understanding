@@ -39,3 +39,9 @@ qdrant-client==1.7.3
 
 # Numpy (pyannote 4.x cần >= 2.0)
 numpy>=2.0
+
+#PostgreSQL
+sqlalchemy>=2.0
+#psycopg[binary]
+psycopg2
+alembic
