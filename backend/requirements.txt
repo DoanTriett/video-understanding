@@ -45,3 +45,6 @@ sqlalchemy>=2.0
 #psycopg[binary]
 psycopg2
 alembic
+
+#MiniO
+boto3

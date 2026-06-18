@@ -1,7 +1,6 @@
 import os
 import uuid
 
-import aiofiles
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
@@ -9,6 +8,7 @@ from app.config import settings
 from app.db import crud  # ← Postgres operations
 from app.db.session import SessionLocal
 from app.models.video import JobStatus, VideoStatusResponse, VideoType, VideoUploadResponse
+from app.storage import upload_bytes
 from app.store import get_progress, set_progress  # ← chỉ dùng progress
 from workers.tasks import process_video
 
@@ -46,11 +46,9 @@ async def upload_video(
 
     video_id = str(uuid.uuid4())
 
-    # Lưu file local (sau này sẽ thay bằng MinIO — ngày 3)
-    os.makedirs(settings.upload_dir, exist_ok=True)
-    file_path = os.path.join(settings.upload_dir, f"{video_id}{file_ext}")
-    async with aiofiles.open(file_path, "wb") as f:
-        await f.write(contents)
+    # Lưu file lên MinIO
+    object_key = f"{video_id}/source{file_ext}"
+    upload_bytes(contents, object_key)
 
     # ① Tạo Video row trong Postgres — đây là source of truth
     crud.create_video(
@@ -59,12 +57,13 @@ async def upload_video(
         filename=file.filename,
         video_type=video_type.value,
     )
+    crud.set_video_object_key(db, video_id, object_key)
 
     # ② Set Redis progress key — để Celery task update real-time
     set_progress(video_id, stage="queued", pct=0)
 
-    # ③ Gửi job cho Celery — truyền thêm file_path vì Celery không đọc DB ngay
-    process_video.delay(video_id, file_path, video_type.value)
+    # ③ Gửi job cho Celery — worker sẽ download source từ MinIO bằng object_key trong DB
+    process_video.delay(video_id, video_type.value)
 
     return VideoUploadResponse(
         video_id=video_id,

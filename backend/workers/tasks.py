@@ -1,74 +1,85 @@
 import json
 import os
+import tempfile
 
-from app.config import settings
 from app.db import crud  # ← Postgres operations
 from app.db.session import SessionLocal  # ← Postgres session
 from app.models.video import VideoType
 from app.pipeline.meeting.pipeline import run_meeting_pipeline
 from app.pipeline.shared.audio_extractor import extract_audio
 from app.pipeline.shared.transcriber import transcribe
+from app.storage import download_to_path, upload_file
 from app.store import delete_progress, set_progress  # ← chỉ dùng progress
 from workers.celery_app import celery_app
 
 
 @celery_app.task(bind=True, max_retries=3)
-def process_video(self, video_id: str, file_path: str, video_type: str):
+def process_video(self, video_id: str, video_type: str):
     # Mở DB session — Celery worker là process riêng, cần session riêng
     db = SessionLocal()
 
     try:
-        work_dir = os.path.join(settings.upload_dir, video_id)
-        os.makedirs(work_dir, exist_ok=True)
+        # Mỗi task download source từ MinIO về temp dir, cuối task upload artifacts lên MinIO.
+        with tempfile.TemporaryDirectory() as work_dir:
+            video_path = os.path.join(work_dir, "source.mp4")
+            object_key = crud.get_video_object_key(db, video_id)  # Lấy object_key từ Postgres
+            if not object_key:
+                raise ValueError(f"Video {video_id} has no MinIO object key")
+            download_to_path(object_key, video_path)
 
-        # ── Bước 1: Extract audio ──────────────────
-        set_progress(video_id, stage="extracting_audio", pct=10)
-        print(f"[{video_id}] Extracting audio...")
-        audio_path = extract_audio(file_path, work_dir)
+            # ── Bước 1: Extract audio ──────────────────
+            set_progress(video_id, stage="extracting_audio", pct=10)
+            print(f"[{video_id}] Extracting audio...")
+            audio_path = extract_audio(video_path, work_dir)
 
-        # ── Bước 2: Transcribe ─────────────────────
-        set_progress(video_id, stage="transcribing", pct=25)
-        print(f"[{video_id}] Transcribing...")
-        result = transcribe(audio_path)
+            # ── Bước 2: Transcribe ─────────────────────
+            set_progress(video_id, stage="transcribing", pct=25)
+            print(f"[{video_id}] Transcribing...")
+            result = transcribe(audio_path)
 
-        transcript_path = os.path.join(work_dir, "transcript.json")
-        transcript_data = {
-            "language": result.language,
-            "duration": result.duration,
-            "segments": [
-                {
-                    "text": seg.text,
-                    "start": seg.start,
-                    "end": seg.end,
-                    "words": [{"word": w.word, "start": w.start, "end": w.end} for w in seg.words],
-                }
-                for seg in result.segments
-            ],
-        }
-        with open(transcript_path, "w", encoding="utf-8") as f:
-            json.dump(transcript_data, f, ensure_ascii=False, indent=2)
+            transcript_path = os.path.join(work_dir, "transcript.json")
+            transcript_data = {
+                "language": result.language,
+                "duration": result.duration,
+                "segments": [
+                    {
+                        "text": seg.text,
+                        "start": seg.start,
+                        "end": seg.end,
+                        "words": [
+                            {"word": w.word, "start": w.start, "end": w.end} for w in seg.words
+                        ],
+                    }
+                    for seg in result.segments
+                ],
+            }
+            with open(transcript_path, "w", encoding="utf-8") as f:
+                json.dump(transcript_data, f, ensure_ascii=False, indent=2)
 
-        # ── Bước 3: Pipeline theo video type ───────
-        set_progress(video_id, stage="running_pipeline", pct=40)
+            # ── Bước 3: Pipeline theo video type ───────
+            set_progress(video_id, stage="running_pipeline", pct=40)
 
-        if video_type in (VideoType.MEETING, VideoType.UNKNOWN):
-            print(f"[{video_id}] Running meeting pipeline...")
+            if video_type in (VideoType.MEETING, VideoType.UNKNOWN):
+                print(f"[{video_id}] Running meeting pipeline...")
 
-            def update_progress(pct):
-                set_progress(video_id, stage="meeting_pipeline", pct=40 + int(pct * 0.55))
+                def update_progress(pct):
+                    set_progress(video_id, stage="meeting_pipeline", pct=40 + int(pct * 0.55))
 
-            chunks = run_meeting_pipeline(
-                video_id=video_id,
-                video_path=file_path,
-                audio_path=audio_path,
-                transcript_path=transcript_path,
-                work_dir=work_dir,
-                update_progress_fn=update_progress,
-            )
+                chunks = run_meeting_pipeline(
+                    video_id=video_id,
+                    video_path=video_path,
+                    audio_path=audio_path,
+                    transcript_path=transcript_path,
+                    work_dir=work_dir,
+                    update_progress_fn=update_progress,
+                )
 
-            # ← Lưu chunks vào Postgres (thay vì chỉ lưu path file)
-            set_progress(video_id, stage="saving_to_db", pct=95)
-            crud.save_chunks(db, video_id, chunks)
+                # ← Lưu chunks vào Postgres (thay vì chỉ lưu path file)
+                set_progress(video_id, stage="saving_to_db", pct=95)
+                crud.save_chunks(db, video_id, chunks)
+
+                # upload transcript, chunks json back
+                upload_file(transcript_path, f"{video_id}/transcript.json")
 
         # ── Done: ghi Postgres, xóa Redis ──────────
         set_progress(video_id, stage="done", pct=100)

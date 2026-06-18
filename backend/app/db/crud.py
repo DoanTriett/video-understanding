@@ -53,6 +53,12 @@ def set_video_object_key(db: Session, video_id: str, object_key: str):
         db.commit()
 
 
+def get_video_object_key(db: Session, video_id: str) -> str | None:
+    """Lấy MinIO object key để Celery download file."""
+    video = get_video(db, video_id)
+    return video.object_key if video else None
+
+
 # ─── Chunk operations ───
 
 

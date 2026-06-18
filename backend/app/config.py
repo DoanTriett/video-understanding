@@ -29,6 +29,11 @@ class Settings(BaseSettings):
 
     device: str = "cuda"
 
+    minio_endpoint: str = Field(default="", env="MINIO_ENDPOINT")
+    minio_access_key: str = Field(default="", env="MINIO_ACCESS_KEY")
+    minio_secret_key: str = Field(default="", env="MINIO_SECRET_KEY")
+    minio_bucket: str = Field(default="videos", env="MINIO_BUCKET")
+
     class Config:
         env_file = ".env"  # Đọc từ file .env
 
