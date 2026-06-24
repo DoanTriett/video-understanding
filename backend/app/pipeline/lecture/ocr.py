@@ -1,16 +1,17 @@
-import os
 import re
 from functools import lru_cache
-
-# Force PaddleOCR to stay on CPU and avoid loading CUDA/cuDNN DLLs.
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 from paddleocr import PaddleOCR  # noqa: E402
 
 
 @lru_cache(maxsize=1)
 def _get_ocr_engine() -> PaddleOCR:
-    """Lazy-load one shared PaddleOCR engine for all slide images."""
+    """Lazy-load one shared PaddleOCR engine for all slide images.
+
+    PaddleOCR is CPU-based only. We don't set CUDA_VISIBLE_DEVICES globally
+    because that would hide GPU from other components (CLIP embedder).
+    Instead, PaddleOCR will just use CPU internally.
+    """
     return PaddleOCR(
         lang="en",
         device="cpu",

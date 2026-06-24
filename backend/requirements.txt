@@ -19,7 +19,7 @@ sqlalchemy==2.0.25
 
 # Utils
 python-dotenv==1.0.0
-httpx==0.26.0
+httpx==0.27.0
 
 # Audio/Video processing
 faster-whisper==1.0.3
@@ -48,3 +48,6 @@ alembic
 
 #MiniO
 boto3
+
+# LLM (local, via Ollama)
+ollama

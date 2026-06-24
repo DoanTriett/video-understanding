@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     minio_secret_key: str = Field(default="", env="MINIO_SECRET_KEY")
     minio_bucket: str = Field(default="videos", env="MINIO_BUCKET")
 
+    # Ollama (local LLM)
+    ollama_host: str = "http://localhost:11434"
+    ollama_model: str = "qwen2.5:7b-instruct-q4_K_M"
+
     class Config:
         env_file = ".env"  # Đọc từ file .env
 

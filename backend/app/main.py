@@ -1,14 +1,17 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from app.api.qa import router as qa_router
 from app.api.videos import router as videos_router
 
-import os
-os.environ["SB_DISABLE_K2"] = "1" # disable speechbrain k2 
+os.environ["SB_DISABLE_K2"] = "1"  # disable speechbrain k2
 
 app = FastAPI(
     title="Video Understanding API",
     description="Meeting & Lecture video Q&A system",
-    version="0.1.0"
+    version="0.1.0",
 )
 
 # CORS: Cho phép frontend  (localhost:3000) gọi API này (localhost:8000)
@@ -22,11 +25,14 @@ app.add_middleware(
 )
 
 app.include_router(videos_router)
+app.include_router(qa_router)
+
 
 @app.get("/")
 def root():
     return {"message": "Video Understanding API is running"}
 
+
 @app.get("/health")
-def health_check(): # endpoint để frontend kiểm tra backend còn sống hay không
+def health_check():  # endpoint để frontend kiểm tra backend còn sống hay không
     return {"status": "ok"}

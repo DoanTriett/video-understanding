@@ -5,8 +5,10 @@ import tempfile
 from app.db import crud  # ← Postgres operations
 from app.db.session import SessionLocal  # ← Postgres session
 from app.models.video import VideoType
+from app.pipeline.lecture.pipeline import run_lecture_pipeline
 from app.pipeline.meeting.pipeline import run_meeting_pipeline
 from app.pipeline.shared.audio_extractor import extract_audio
+from app.pipeline.shared.indexer import index_chunks
 from app.pipeline.shared.transcriber import transcribe
 from app.storage import download_to_path, upload_file
 from app.store import delete_progress, set_progress  # ← chỉ dùng progress
@@ -73,13 +75,33 @@ def process_video(self, video_id: str, video_type: str):
                     work_dir=work_dir,
                     update_progress_fn=update_progress,
                 )
+            elif video_type == VideoType.LECTURE:
+                print(f"[{video_id}] Running lecture pipeline...")
 
-                # ← Lưu chunks vào Postgres (thay vì chỉ lưu path file)
-                set_progress(video_id, stage="saving_to_db", pct=95)
-                crud.save_chunks(db, video_id, chunks)
+                def update_progress(pct):
+                    set_progress(video_id, stage="lecture_pipeline", pct=40 + int(pct * 0.55))
 
-                # upload transcript, chunks json back
-                upload_file(transcript_path, f"{video_id}/transcript.json")
+                chunks = run_lecture_pipeline(
+                    video_id=video_id,
+                    video_path=video_path,
+                    transcript_path=transcript_path,
+                    work_dir=work_dir,
+                    update_progress_fn=update_progress,
+                )
+            else:
+                raise ValueError(f"Unsupported video_type: {video_type}")
+
+            # ── Bước 4: Lưu + index chunks (dùng chung cho mọi pipeline) ──
+            # ← Lưu chunks vào Postgres (thay vì chỉ lưu path file)
+            set_progress(video_id, stage="saving_to_db", pct=95)
+            crud.save_chunks(db, video_id, chunks)
+
+            # ← Index chunks vào Qdrant để phục vụ retrieval/QA
+            set_progress(video_id, stage="indexing_qdrant", pct=97)
+            index_chunks(video_id, chunks)
+
+            # upload transcript json back
+            upload_file(transcript_path, f"{video_id}/transcript.json")
 
         # ── Done: ghi Postgres, xóa Redis ──────────
         set_progress(video_id, stage="done", pct=100)
