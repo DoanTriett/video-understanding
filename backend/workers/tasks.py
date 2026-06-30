@@ -61,7 +61,7 @@ def process_video(self, video_id: str, video_type: str):
             # ── Bước 3: Pipeline theo video type ───────
             set_progress(video_id, stage="running_pipeline", pct=40)
 
-            if video_type in (VideoType.MEETING, VideoType.UNKNOWN):
+            if video_type == VideoType.MEETING:
                 print(f"[{video_id}] Running meeting pipeline...")
 
                 def update_progress(pct):

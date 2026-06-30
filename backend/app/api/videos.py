@@ -1,14 +1,14 @@
 import os
 import uuid
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db import crud  # ← Postgres operations
 from app.db.session import SessionLocal
 from app.models.video import JobStatus, VideoStatusResponse, VideoType, VideoUploadResponse
-from app.storage import upload_bytes
+from app.storage import download_to_path, presigned_url, upload_bytes
 from app.store import get_progress, set_progress  # ← chỉ dùng progress
 from workers.tasks import process_video
 
@@ -28,7 +28,7 @@ def get_db():
 @router.post("/upload", response_model=VideoUploadResponse)
 async def upload_video(
     file: UploadFile = File(...),
-    video_type: VideoType = VideoType.UNKNOWN,
+    video_type: VideoType = Form(...),
     db: Session = Depends(get_db),  # ← inject DB
 ):
     # Validate extension
@@ -110,21 +110,31 @@ def get_video_status(video_id: str, db: Session = Depends(get_db)):
 
 @router.get("/{video_id}/transcript")
 def get_transcript(video_id: str, db: Session = Depends(get_db)):
+    import json
+    import tempfile
+
+    from botocore.exceptions import ClientError
+
     video = crud.get_video(db, video_id)
     if not video:
         raise HTTPException(status_code=404, detail="Video not found")
     if video.status != "done":
         raise HTTPException(status_code=400, detail=f"Not ready. Status: {video.status}")
 
-    # Vẫn đọc từ file local tạm thời — ngày 3 sẽ thay bằng MinIO
-    transcript_path = os.path.join(settings.upload_dir, video_id, "transcript.json")
-    if not os.path.exists(transcript_path):
-        raise HTTPException(status_code=404, detail="Transcript file not found")
+    object_key = f"{video_id}/transcript.json"
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        local_path = os.path.join(tmp_dir, "transcript.json")
+        try:
+            download_to_path(object_key, local_path)
+        except ClientError as exc:
+            error_code = exc.response.get("Error", {}).get("Code", "")
+            if error_code in ("404", "NoSuchKey"):
+                raise HTTPException(status_code=404, detail="Transcript file not found")
+            # Any other ClientError (auth, bucket missing, etc.) → let it surface as 500
+            raise
 
-    import json
-
-    with open(transcript_path, "r", encoding="utf-8") as f:
-        return json.load(f)
+        with open(local_path, "r", encoding="utf-8") as f:
+            return json.load(f)
 
 
 @router.get("/{video_id}/chunks")
@@ -152,3 +162,11 @@ def get_chunks(video_id: str, db: Session = Depends(get_db)):
             for c in chunks
         ],
     }
+
+
+@router.get("/{video_id}/url")
+def get_video_url(video_id: str, db: Session = Depends(get_db)):
+    video = crud.get_video(db, video_id)
+    if not video or not video.object_key:
+        raise HTTPException(status_code=404, detail="Video not found")
+    return {"url": presigned_url(video.object_key)}

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -6,6 +6,7 @@ from app.db import crud
 from app.db.session import SessionLocal
 from app.llm import generate_answer
 from app.pipeline.shared.retriever import build_context, retrieve
+from app.semantic_cache import get_cached_answer, set_cached_answer
 
 router = APIRouter(prefix="/videos", tags=["qa"])
 
@@ -37,7 +38,12 @@ class AskResponse(BaseModel):
 
 
 @router.post("/{video_id}/ask", response_model=AskResponse)
-def ask_video(video_id: str, body: AskRequest, db: Session = Depends(get_db)):
+def ask_video(
+    video_id: str,
+    body: AskRequest,
+    response: Response,
+    db: Session = Depends(get_db),
+):
     video = crud.get_video(db, video_id)
     if not video:
         raise HTTPException(status_code=404, detail="Video not found")
@@ -46,6 +52,16 @@ def ask_video(video_id: str, body: AskRequest, db: Session = Depends(get_db)):
             status_code=400,
             detail=f"Video is still processing. Current status: {video.status}",
         )
+
+    cached = get_cached_answer(video_id, body.question)
+    if cached is not None:
+        response.headers["X-Cache"] = "HIT"
+        return AskResponse(
+            answer=cached["answer"],
+            citations=[Citation(**c) for c in cached["citations"]],
+        )
+
+    response.headers["X-Cache"] = "MISS"
 
     chunks = retrieve(video_id, body.question, body.top_k)
     if not chunks:
@@ -73,4 +89,10 @@ def ask_video(video_id: str, body: AskRequest, db: Session = Depends(get_db)):
         for c in chunks
     ]
 
-    return AskResponse(answer=answer, citations=citations)
+    result = AskResponse(answer=answer, citations=citations)
+    set_cached_answer(
+        video_id,
+        body.question,
+        {"answer": result.answer, "citations": [c.model_dump() for c in result.citations]},
+    )
+    return result

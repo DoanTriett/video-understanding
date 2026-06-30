@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.qa import router as qa_router
+from app.api.summary import router as summary_router
 from app.api.videos import router as videos_router
 
 os.environ["SB_DISABLE_K2"] = "1"  # disable speechbrain k2
@@ -26,6 +27,7 @@ app.add_middleware(
 
 app.include_router(videos_router)
 app.include_router(qa_router)
+app.include_router(summary_router)
 
 
 @app.get("/")

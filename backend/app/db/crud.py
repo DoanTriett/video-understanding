@@ -4,7 +4,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from app.db.models import Chunk, Video
+from app.db.models import Chunk, Summary, Video
 
 # ─── Video operations ───
 
@@ -110,3 +110,32 @@ def save_chunks(db: Session, video_id: str, chunks: list):
 def get_chunks(db: Session, video_id: str) -> list[Chunk]:
     """Lấy tất cả chunks của 1 video, sắp xếp theo thời gian."""
     return db.query(Chunk).filter(Chunk.video_id == video_id).order_by(Chunk.start).all()
+
+
+# ─── Summary operations ───
+
+
+def upsert_summary(db: Session, video_id: str, video_type: str, content: dict) -> Summary:
+    """Insert hoặc update summary cho video_id."""
+    summary_id = f"{video_id}_summary"
+    summary = db.query(Summary).filter(Summary.id == summary_id).first()
+    if summary:
+        summary.content = content
+        summary.video_type = video_type
+    else:
+        summary = Summary(
+            id=summary_id,
+            video_id=video_id,
+            video_type=video_type,
+            content=content,
+            created_at=datetime.utcnow(),
+        )
+        db.add(summary)
+    db.commit()
+    db.refresh(summary)
+    return summary
+
+
+def get_summary(db: Session, video_id: str) -> Summary | None:
+    """Lấy summary đã lưu của video, trả None nếu chưa có."""
+    return db.query(Summary).filter(Summary.id == f"{video_id}_summary").first()

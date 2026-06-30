@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
@@ -29,3 +29,12 @@ class Chunk(Base):
     end: Mapped[float] = mapped_column(Float)
     chunk_type: Mapped[str] = mapped_column(String, default="transcript")
     video: Mapped["Video"] = relationship(back_populates="chunks")
+
+
+class Summary(Base):
+    __tablename__ = "summaries"
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    video_id: Mapped[str] = mapped_column(ForeignKey("videos.id"))
+    video_type: Mapped[str] = mapped_column(String)
+    content: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
