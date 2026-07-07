@@ -1,0 +1,46 @@
+# syntax=docker/dockerfile:1
+# Build context must be the backend/ directory:
+#   docker build -f backend/Dockerfile.worker ./backend   (from repo root)
+#
+# GPU worker — faster-whisper, pyannote, CLIP run here (CUDA 12.6).
+# Image is intentionally large (~5–8 GB) due to torch+CUDA + ML deps.
+# Runtime env — inject via docker run -e / orchestrator.
+
+FROM nvidia/cuda:12.6.0-runtime-ubuntu22.04
+
+WORKDIR /app
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      software-properties-common \
+      curl \
+ && add-apt-repository -y ppa:deadsnakes/ppa \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends \
+      python3.11 \
+      python3.11-dev \
+      python3.11-venv \
+      ffmpeg \
+      libsndfile1 \
+      libpq-dev \
+      build-essential \
+ && curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11 \
+ && ln -sf /usr/bin/python3.11 /usr/local/bin/python \
+ && ln -sf /usr/bin/python3.11 /usr/local/bin/python3 \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+
+RUN python3.11 -m pip install --no-cache-dir --upgrade pip \
+ && python3.11 -m pip install --no-cache-dir \
+      torch torchvision torchaudio \
+      --index-url https://download.pytorch.org/whl/cu126 \
+ && python3.11 -m pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+CMD ["celery", "-A", "workers.celery_app", "worker", "--loglevel=info"]

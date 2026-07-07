@@ -50,9 +50,12 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
 COPY --from=builder /app/public          ./public
 COPY --from=builder /app/package.json    ./package.json
 
+# Bundled npm CLI (node:22-alpine) ships picomatch 4.0.3 — not used at runtime.
+# Run Next.js directly via node instead of `npm start`.
+RUN rm -rf /usr/local/lib/node_modules/npm
+
 USER nextjs
 
 EXPOSE 3000
 
-# `next start` reads .next/ and serves the pre-built app
-CMD ["npm", "start"]
+CMD ["node", "node_modules/next/dist/bin/next", "start"]

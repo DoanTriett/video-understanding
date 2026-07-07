@@ -1,0 +1,17 @@
+# Local dev / caches — must not ship into image or inflate build context
+venv/
+.venv/
+.env
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+__pycache__/
+**/__pycache__/
+*.py[cod]
+
+# Runtime data (MinIO in prod)
+uploads/
+
+# Tests not needed in production images
+tests/
