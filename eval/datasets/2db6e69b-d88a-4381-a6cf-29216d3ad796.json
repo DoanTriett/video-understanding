@@ -1,0 +1,99 @@
+{
+  "video_id": "2db6e69b-d88a-4381-a6cf-29216d3ad796",
+  "video_type": null,
+  "qa_pairs": [
+    {
+      "question": "walk me through the architecture",
+      "expected_answer": "Dựa trên context cung cấp, không có thông tin chi tiết về quy trình thiết kế hoặc kiến trúc cụ thể được đề cập. Tuy nhiên, tôi có thể tóm tắt những điểm quan trọng đã được đề cập:\n\n- API (Application Programming Interface): Các API như dịch vụ, thanh toán, bản đồ, xác thực, cơ sở dữ liệu được kết nối để tạo ra ứng dụng.\n  [01:06]\n\n- Truy cập AI vào công cụ: Mô hình quyết định khi cần gọi API tìm kiếm.\n  [12:37]\n\nNếu bạn muốn biết thêm chi tiết về kiến trúc hoặc quy trình phát triển, có thể tham khảo khóa học miễn phí trên Coursera đã được đề xuất.",
+      "ground_truth_timestamps": [
+        {
+          "start": 26.0,
+          "end": 30.0
+        },
+        {
+          "start": 0.0,
+          "end": 3.0
+        },
+        {
+          "start": 757.0,
+          "end": 764.0
+        },
+        {
+          "start": 66.0,
+          "end": 69.0
+        },
+        {
+          "start": 470.0,
+          "end": 473.0
+        },
+        {
+          "start": 779.0,
+          "end": 784.0
+        }
+      ],
+      "notes": null
+    },
+    {
+      "question": "what are the topics",
+      "expected_answer": "Context không cung cấp danh sách cụ thể các chủ đề được thảo luận trong buổi học, nhưng dựa trên nội dung đã trích dẫn:\n\n- APIs là gì và tại sao chúng quan trọng.\n- Cách API hoạt động bằng cách sử dụng các phương thức HTTP (như GET, POST).\n- Mô tả một ví dụ REST API cơ bản.\n\nNên có thể nói rằng các chủ đề chính bao gồm định nghĩa của API, vai trò của nó trong việc phát triển ứng dụng AI, và cách API giao tiếp thông qua các phương thức HTTP như GET và POST. [02:02]",
+      "ground_truth_timestamps": [
+        {
+          "start": 93.0,
+          "end": 96.0
+        },
+        {
+          "start": 6.0,
+          "end": 10.76
+        },
+        {
+          "start": 779.0,
+          "end": 784.0
+        },
+        {
+          "start": 122.0,
+          "end": 125.0
+        },
+        {
+          "start": 112.0,
+          "end": 115.0
+        },
+        {
+          "start": 132.0,
+          "end": 135.0
+        }
+      ],
+      "notes": null
+    },
+    {
+      "question": "what is the important note",
+      "expected_answer": "Dựa trên context cung cấp, câu trả lời quan trọng cần lưu ý là:\n\nMonitoring and documentation are not optional. [12:59]\n\nĐây là thông báo được nhấn mạnh và nhắc lại trong bài trình bày.",
+      "ground_truth_timestamps": [
+        {
+          "start": 671.0,
+          "end": 674.0
+        },
+        {
+          "start": 779.0,
+          "end": 784.0
+        },
+        {
+          "start": 325.0,
+          "end": 328.0
+        },
+        {
+          "start": 328.0,
+          "end": 333.0
+        },
+        {
+          "start": 491.0,
+          "end": 494.0
+        },
+        {
+          "start": 587.0,
+          "end": 590.0
+        }
+      ],
+      "notes": null
+    }
+  ]
+}

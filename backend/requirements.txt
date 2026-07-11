@@ -51,3 +51,6 @@ boto3
 
 # LLM (local, via Ollama)
 ollama
+
+# Rate limiting
+slowapi

@@ -1,13 +1,24 @@
+import logging
 import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.api.qa import router as qa_router
 from app.api.summary import router as summary_router
 from app.api.videos import router as videos_router
+from app.limiter import limiter
+from app.middleware import RequestLoggingMiddleware
 
 os.environ["SB_DISABLE_K2"] = "1"  # disable speechbrain k2
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s — %(message)s",
+)
 
 app = FastAPI(
     title="Video Understanding API",
@@ -15,15 +26,23 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# CORS: Cho phép frontend  (localhost:3000) gọi API này (localhost:8000)
-# CORS = Cross-Origin Resource Sharing
+# Attach slowapi limiter to app state and register the 429 handler.
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
+
+# CORS: Cho phép frontend (localhost:3000) gọi API này (localhost:8000).
+# Must be added after SlowAPIMiddleware so CORS headers are present on 429 responses too.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Next.js mặc định chạy port 3000
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Request logging — innermost middleware, sees final status codes.
+app.add_middleware(RequestLoggingMiddleware)
 
 app.include_router(videos_router)
 app.include_router(qa_router)

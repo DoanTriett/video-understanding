@@ -1,0 +1,161 @@
+{
+  "video_id": "42982b9a-f6b0-47dd-bade-1703b3b35ab4",
+  "video_type": null,
+  "qa_pairs": [
+    {
+      "question": "what are the topics that are discussed",
+      "expected_answer": "Dựa trên context cung cấp, các chủ đề được thảo luận trong video bao gồm:\n\n1. [00:06] Giới thiệu về CICD (Continuous Integration and Continuous Deployment).\n2. [02:15] Giải thích quá trình CICD với mô hình tư duy.\n3. [04:08] Khám phá các công cụ phổ biến trong ngành.\n4. [08:18] Giới thiệu Harness AI và cách nó kết hợp CI-CD.\n\nKhông có thông tin chi tiết về tất cả các chủ đề khác được thảo luận, nhưng có thể suy đoán rằng video này sẽ đi sâu vào từng khía cạnh của CICD như quy trình tích hợp liên tục, triển khai liên tục, kiểm thử tự động, và các vấn đề liên quan.",
+      "ground_truth_timestamps": [
+        {
+          "start": 40.0,
+          "end": 45.0
+        },
+        {
+          "start": 498.0,
+          "end": 501.0
+        },
+        {
+          "start": 501.0,
+          "end": 504.0
+        },
+        {
+          "start": 6.0,
+          "end": 9.0
+        },
+        {
+          "start": 135.0,
+          "end": 138.0
+        },
+        {
+          "start": 0.0,
+          "end": 3.0
+        }
+      ],
+      "notes": null
+    },
+    {
+      "question": "what is the pipeline of ci cd",
+      "expected_answer": "Pipeline trong CI/CD là chuỗi các bước tự động hóa từ việc kiểm tra mã nguồn đến việc triển khai ứng dụng. Cụ thể như sau:\n\n- Developer pushes code.\n- Pipeline runs checks như dependency install, linting, unit testing, integration test, và build validation.\n[01:04] [SLIDE]\n[SPEECH] Automatically.\n\nTrong traditional CI-CD workflows, pipeline thường trực tiếp triển khai vào môi trường sản xuất. Tuy nhiên, điều này cũng tạo ra rủi ro bởi vì bạn đang trao quyền lớn cho hệ thống CI/CD. Nếu hệ thống bị cấu hình sai, bị xâm phạm hoặc được cấp quyền quá nhiều, nó có thể ảnh hưởng trực tiếp đến môi trường sản xuất.\n[09:24] [SLIDE]\n\nHệ thống này bao gồm các bước như:\n\n- Build (đóng gói và xây dựng mã)\n- Tests (kiểm thử tự động)\n- Checkout/Code (lấy code từ version control system)\n- Dependencies installation (cài đặt phụ thuộc)\n[09:18] [SLIDE]\n\nQuá trình này đảm bảo chất lượng code thông qua các bước kiểm tra và xây dựng, nhưng cũng cần quản lý cẩn thận để hạn chế rủi ro trong việc triển khai trực tiếp vào môi trường sản xuất.\n[09:24] [SLIDE]",
+      "ground_truth_timestamps": [
+        {
+          "start": 54.0,
+          "end": 58.0
+        },
+        {
+          "start": 538.0,
+          "end": 541.0
+        },
+        {
+          "start": 469.0,
+          "end": 474.0
+        },
+        {
+          "start": 564.0,
+          "end": 569.0
+        },
+        {
+          "start": 558.0,
+          "end": 564.0
+        },
+        {
+          "start": 64.0,
+          "end": 72.0
+        }
+      ],
+      "notes": null
+    },
+    {
+      "question": "tell me how the CI CD help the Ops process, in english",
+      "expected_answer": "Context không cung cấp chi tiết cụ thể về cách CICD giúp quá trình Ops (Operations). Tuy nhiên, thông thường, CICD giúpOps qua các bước tự động hóa kiểm tra code và triển khai ứng dụng, giảm thiểu rủi ro và tăng hiệu suất.\n\nTrích dẫn từ context: [00:22] \"but in real life, there are multiple stages. There are tools, approvals, security scans,\" \n\n[08:18] \"of them is Harness AI. It combines CI-CD, investigate, troubleshoot without manually digging into logs, metrics and dashboards.\"\n\nĐây không phải là lời giải trực tiếp cho câu hỏi của bạn nhưng có thể suy ra rằng CICD giúp Ops qua việc tự động hóa quy trình kiểm tra và triển khai code, giảm bớt công việc tốn thời gian cho đội ngũOps, đồng thời tăng độ chính xác và tốc độ.",
+      "ground_truth_timestamps": [
+        {
+          "start": 22.0,
+          "end": 26.0
+        },
+        {
+          "start": 54.0,
+          "end": 58.0
+        },
+        {
+          "start": 58.0,
+          "end": 61.0
+        },
+        {
+          "start": 535.0,
+          "end": 538.0
+        },
+        {
+          "start": 48.0,
+          "end": 51.0
+        },
+        {
+          "start": 498.0,
+          "end": 501.0
+        }
+      ],
+      "notes": null
+    },
+    {
+      "question": "what is CI CD",
+      "expected_answer": "Theo context, CI/CD (Continuous Integration/Continuous Deployment) là một quy trình làm việc bao gồm hai phần chính:\n\n1. [00:54] - CICD có hai phần chính, đó là CI và CD.\n2. [00:58] - CI (Continuous Integration): Đây là phần nơi mọi thay đổi mã nguồn được kiểm tra tự động. Khi phát triển-push code vào hệ thống, trìnhPipeline sẽ chạy các kiểm tra như cài đặt phụ thuộc.\n\nVậy, CI/CD là quy trình liên tục tích hợp và triển khai mã nguồn, giúp quản lý sự thay đổi và đảm bảo chất lượng dự án một cách hiệu quả.",
+      "ground_truth_timestamps": [
+        {
+          "start": 54.0,
+          "end": 58.0
+        },
+        {
+          "start": 58.0,
+          "end": 61.0
+        },
+        {
+          "start": 51.0,
+          "end": 54.0
+        },
+        {
+          "start": 61.0,
+          "end": 64.0
+        },
+        {
+          "start": 9.0,
+          "end": 12.0
+        },
+        {
+          "start": 48.0,
+          "end": 51.0
+        }
+      ],
+      "notes": null
+    },
+    {
+      "question": "give me a longer answer, also, answer in English",
+      "expected_answer": "Based on the context provided [07:41 - 08:18], here's a longer answer in English:\n\nThe speaker discusses CICD (Continuous Integration and Continuous Deployment) workflows which are prevalent across various development environments. They specifically highlight GitLab CI as a suitable choice for teams that prefer a single platform solution, emphasizing its adaptability to changes while maintaining consistent workflow patterns.\n\nHowever, the context also notes an emerging trend in this space with AI becoming increasingly important in software delivery processes. In response to this evolving landscape, Harness AI is introduced as one of the newer platforms that are gaining traction. Unlike the more established solutions like GitLab CI which have been around for longer, Harness AI is specifically noted for its integration with artificial intelligence.\n\nHarness AI's primary function appears to be combining CICD processes in a way that leverages AI technologies. While no specific details about Harness AI's features or functionalities are provided [08:18], the context suggests it represents an interesting development in the CI-CD space, highlighting how advancements in technology such as AI are shaping future tools and practices for software development teams.\n\nIt is worth noting that at this moment, there is no practical need to delve into Harness AI's specifics; however, understanding its presence indicates a broader trend of incorporating more intelligent solutions within CICD pipelines.",
+      "ground_truth_timestamps": [
+        {
+          "start": 498.0,
+          "end": 501.0
+        },
+        {
+          "start": 0.0,
+          "end": 3.0
+        },
+        {
+          "start": 486.0,
+          "end": 489.0
+        },
+        {
+          "start": 461.0,
+          "end": 464.0
+        },
+        {
+          "start": 3.0,
+          "end": 6.0
+        },
+        {
+          "start": 464.0,
+          "end": 465.38
+        }
+      ],
+      "notes": null
+    }
+  ]
+}

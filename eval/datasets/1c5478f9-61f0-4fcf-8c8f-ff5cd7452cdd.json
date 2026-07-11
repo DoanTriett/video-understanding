@@ -1,0 +1,130 @@
+{
+  "video_id": "1c5478f9-61f0-4fcf-8c8f-ff5cd7452cdd",
+  "video_type": null,
+  "qa_pairs": [
+    {
+      "question": "is there any thing I can skip",
+      "expected_answer": "Không tìm thấy thông tin trong context về việc có thể bỏ qua điều gì. Context nói về việc xem xét các kế hoạch và CICD, nhưng không đề cập đến việc bỏ qua bất kỳ nội dung nào cụ thể. [mm:ss] thời gian trích dẫn từ timestamp không liên quan trực tiếp đến câu hỏi của bạn.",
+      "ground_truth_timestamps": [
+        {
+          "start": 17.92,
+          "end": 23.18
+        },
+        {
+          "start": 0.91,
+          "end": 16.3
+        },
+        {
+          "start": 38.72,
+          "end": 48.74
+        },
+        {
+          "start": 154.2,
+          "end": 161.77
+        },
+        {
+          "start": 72.54,
+          "end": 79.47
+        },
+        {
+          "start": 126.42,
+          "end": 140.02
+        }
+      ],
+      "notes": null
+    },
+    {
+      "question": "is there anything that is not quite important",
+      "expected_answer": "Dựa trên context cung cấp, không có thông tin rõ ràng về điều gì là không quan trọng. Context chủ yếu nói về việc tổng hợp các giá trị có thể tùy chỉnh trong phân tích chuỗi giá trị và một số phát triển đáng chú ý của công ty. Không tìm thấy thông tin cho câu hỏi \"có điều gì không quá quan trọng không\".",
+      "ground_truth_timestamps": [
+        {
+          "start": 154.2,
+          "end": 161.77
+        },
+        {
+          "start": 140.02,
+          "end": 154.2
+        },
+        {
+          "start": 59.76,
+          "end": 67.44
+        },
+        {
+          "start": 29.9,
+          "end": 38.3
+        },
+        {
+          "start": 67.46,
+          "end": 72.54
+        },
+        {
+          "start": 48.92,
+          "end": 57.88
+        }
+      ],
+      "notes": null
+    },
+    {
+      "question": "what is important in this meeting",
+      "expected_answer": "Dựa trên nội dung của cuộc họp được cung cấp, có một số điểm quan trọng như sau:\n\n1. [00:00-00:17]: Nhóm đang thảo luận về việc hoàn thành một dự án hoặc kế hoạch đến thứ 5 tuần này. Họ muốn xem xét và lựa chọn top 5 từ cả plan và CICD.\n\n2. [00:38-01:19]: Có đề cập đến plan editor là một lựa chọn cho CICD, đồng thời có người đề xuất thêm một danh sách top 5 cho Cormac.\n\n3. [02:20-02:34]: Người nói chia sẻ rằng công ty cần cải thiện hơn nữa qua các cuộc thảo luận như vậy để thu được những thành tựu và chiến thắng.\n\nTuy nhiên, không có thông tin cụ thể về việc \"giá trị hoặc mục tiêu chính của cuộc họp\" được nêu rõ. Dựa vào nội dung, nhóm đang cố gắng hoàn thành một dự án, xem xét kế hoạch và cải thiện các chiến lược hiện tại cho công ty.",
+      "ground_truth_timestamps": [
+        {
+          "start": 0.91,
+          "end": 16.3
+        },
+        {
+          "start": 140.02,
+          "end": 154.2
+        },
+        {
+          "start": 154.2,
+          "end": 161.77
+        },
+        {
+          "start": 38.72,
+          "end": 48.74
+        },
+        {
+          "start": 79.47,
+          "end": 111.88
+        },
+        {
+          "start": 17.92,
+          "end": 23.18
+        }
+      ],
+      "notes": null
+    },
+    {
+      "question": "what are the plans",
+      "expected_answer": "Context không cung cấp chi tiết đầy đủ về các kế hoạch cụ thể. Tuy nhiên, có một số gợi ý về việc lựa chọn những kế hoạch sau:\n\n- Có thể sẽ chọn plan editor như một phần của CICD [00:17].\n- Có thể có một câu chuyện liên quan đến Value Stream Analytics trong đó [00:23].\n\nNgười dùng cũng đề xuất nên chọn top 5 từ cả plan và CICD [00:00]. Tuy nhiên, không có thông tin về các kế hoạch cụ thể khác ngoài những gợi ý này.",
+      "ground_truth_timestamps": [
+        {
+          "start": 38.72,
+          "end": 48.74
+        },
+        {
+          "start": 17.92,
+          "end": 23.18
+        },
+        {
+          "start": 0.91,
+          "end": 16.3
+        },
+        {
+          "start": 154.2,
+          "end": 161.77
+        },
+        {
+          "start": 140.02,
+          "end": 154.2
+        },
+        {
+          "start": 23.26,
+          "end": 29.02
+        }
+      ],
+      "notes": null
+    }
+  ]
+}

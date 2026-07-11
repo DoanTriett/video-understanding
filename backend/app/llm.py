@@ -10,9 +10,15 @@ _QA_SYSTEM_PROMPT = (
 )
 
 
+# qwen2.5:7b generates a full /ask answer in a few seconds on the RTX 4050 dev
+# box; 60s gives ample headroom for a cold model load or a slow context while
+# still failing fast instead of hanging the request indefinitely.
+OLLAMA_TIMEOUT_SECONDS = 60
+
+
 def call_llm(system: str, user: str) -> str:
-    """Generic single-turn LLM call via Ollama. Raises RuntimeError if unreachable."""
-    client = ollama.Client(host=settings.ollama_host)
+    """Generic single-turn LLM call via Ollama. Raises RuntimeError if unreachable or timed out."""
+    client = ollama.Client(host=settings.ollama_host, timeout=OLLAMA_TIMEOUT_SECONDS)
     try:
         response = client.chat(
             model=settings.ollama_model,
@@ -23,7 +29,8 @@ def call_llm(system: str, user: str) -> str:
         )
     except Exception as exc:
         raise RuntimeError(
-            f"Ollama server not reachable at {settings.ollama_host}. Run `ollama serve`."
+            f"Ollama server not reachable or timed out after {OLLAMA_TIMEOUT_SECONDS}s "
+            f"at {settings.ollama_host}. Run `ollama serve`."
         ) from exc
     return response.message.content  # type: ignore[return-value]
 

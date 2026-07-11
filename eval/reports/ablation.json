@@ -1,0 +1,17 @@
+{
+  "ablation_A_chunk_type_filter": {
+    "all_chunks": {
+      "n": 20,
+      "faithfulness_rate": 0.65,
+      "avg_hallucination_rate": 0.33571969696969695
+    },
+    "speech_only": {
+      "n": 12,
+      "faithfulness_rate": 0.16666666666666666,
+      "avg_hallucination_rate": 0.6051587301587301
+    }
+  },
+  "ablation_B_diarization": "BLOCKED — no skip_diarization flag in pipeline",
+  "ablation_C_ocr": "BLOCKED — no skip_ocr flag in pipeline",
+  "ablation_D_fixed_duration_chunking": "BLOCKED — no chunk_fixed_duration() + re-index needed"
+}

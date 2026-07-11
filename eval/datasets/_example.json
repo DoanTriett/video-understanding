@@ -1,0 +1,32 @@
+{
+  "_comment": "EXAMPLE ONLY — fake data to illustrate the annotation format. Do NOT use for eval.",
+  "video_id": "00000000-0000-0000-0000-000000000000",
+  "video_type": "meeting",
+  "qa_pairs": [
+    {
+      "question": "What was decided about the project deadline?",
+      "expected_answer": "The team agreed to move the deadline to next Friday.",
+      "ground_truth_timestamps": [
+        {"start": 120.0, "end": 145.5}
+      ],
+      "notes": "Speaker 01 confirmed this at around 2:00"
+    },
+    {
+      "question": "Who is responsible for the frontend changes?",
+      "expected_answer": "Alice will handle all frontend changes this sprint.",
+      "ground_truth_timestamps": [
+        {"start": 310.0, "end": 325.0},
+        {"start": 410.0, "end": 420.0}
+      ],
+      "notes": null
+    },
+    {
+      "question": "Was there a blocker mentioned for the API integration?",
+      "expected_answer": "Yes, the team is waiting on credentials from the third-party provider.",
+      "ground_truth_timestamps": [
+        {"start": 530.0, "end": 558.0}
+      ],
+      "notes": "Mentioned briefly — may need a follow-up question to get a cleaner answer"
+    }
+  ]
+}

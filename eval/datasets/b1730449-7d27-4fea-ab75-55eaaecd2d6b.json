@@ -1,0 +1,254 @@
+{
+  "video_id": "b1730449-7d27-4fea-ab75-55eaaecd2d6b",
+  "video_type": null,
+  "qa_pairs": [
+    {
+      "question": "What statistics are decreased",
+      "expected_answer": "Dựa trên thông tin từ context, chúng ta có thể xác định một số chỉ số đã giảm:\n\n1. [02:33] Tổng chi tiêu du lịch toàn bộ đã giảm đáng kể.\n2. [03:17] Chi tiêu hàng tuần tổng thể cũng giảm.\n\nContext không cung cấp thêm thông tin cụ thể về các chỉ số khác có thể đã giảm, do đó chúng ta không thể đưa ra kết luận về những chỉ số khác ngoài hai điểm trên mà không có thông tin bổ sung.",
+      "ground_truth_timestamps": [
+        {
+          "start": 197.14,
+          "end": 219.28
+        },
+        {
+          "start": 153.44,
+          "end": 190.98
+        },
+        {
+          "start": 94.96,
+          "end": 118.73
+        },
+        {
+          "start": 119.39,
+          "end": 142.97
+        },
+        {
+          "start": 6.74,
+          "end": 18.54
+        },
+        {
+          "start": 47.82,
+          "end": 54.22
+        }
+      ],
+      "notes": null
+    },
+    {
+      "question": "New zealand nằm ở khu vực nào",
+      "expected_answer": "Không tìm thấy thông tin về vị trí của New Zealand trong context. Context chủ yếu nói về tình hình du lịch ở Waipar District và tác động của COVID-19, không đề cập đến địa lý cụ thể của New Zealand.",
+      "ground_truth_timestamps": [
+        {
+          "start": 94.96,
+          "end": 118.73
+        },
+        {
+          "start": 153.44,
+          "end": 190.98
+        },
+        {
+          "start": 119.39,
+          "end": 142.97
+        },
+        {
+          "start": 6.74,
+          "end": 18.54
+        },
+        {
+          "start": 54.22,
+          "end": 59.46
+        },
+        {
+          "start": 59.78,
+          "end": 65.1
+        }
+      ],
+      "notes": null
+    },
+    {
+      "question": "what happened in Waipar District",
+      "expected_answer": "The context mentions that Waipar District Council experienced significant growth in tourism, particularly with double-digit growth in visitor expenditure and commercial accommodation. However, due to the impact of COVID-19, there has been a change in the dynamic for tourism in the district.\n\n[01:59] Speaker_01 states: \"Waipar District Council was going through significant growth, probably one of the fastest growing regions for us with regards to tourism impact.\"\n\n[02:33] The same speaker also mentions: \"Since COVID lockdown and international travel restrictions were put in place, international visitor arrivals into New Zealand has been dropping at a very sharp rate.\"\n\n所以，Waipar地区在旅游方面经历了显著的增长，尤其是在游客支出和商业住宿方面有两位数的增长。但由于COVID-19的影响，国际游客的入境数量急剧下降。",
+      "ground_truth_timestamps": [
+        {
+          "start": 119.39,
+          "end": 142.97
+        },
+        {
+          "start": 94.96,
+          "end": 118.73
+        },
+        {
+          "start": 153.44,
+          "end": 190.98
+        },
+        {
+          "start": 6.74,
+          "end": 18.54
+        },
+        {
+          "start": 24.1,
+          "end": 32.72
+        },
+        {
+          "start": 0.0,
+          "end": 6.74
+        }
+      ],
+      "notes": null
+    },
+    {
+      "question": "what are the impacts of COVID on tourism",
+      "expected_answer": "The context mentions several impacts of COVID-19 on tourism:\n\n[02:33] - International visitor arrivals into New Zealand have dropped sharply since lockdown and international travel restrictions were implemented.\n\n[03:17] - Overall visitor expenditure is down significantly. \n\n[UNKNOWN @ 03:46] - However, food, liquor and pharmacies are still showing some cumulative weekly growth in expenditure compared to other types of visitor spending.\n\nThese points indicate a significant decline in overall tourism activities due to the pandemic, but with some exceptions like essential goods which people continue to purchase.",
+      "ground_truth_timestamps": [
+        {
+          "start": 119.39,
+          "end": 142.97
+        },
+        {
+          "start": 153.44,
+          "end": 190.98
+        },
+        {
+          "start": 94.96,
+          "end": 118.73
+        },
+        {
+          "start": 197.14,
+          "end": 219.28
+        },
+        {
+          "start": 226.16,
+          "end": 230.56
+        },
+        {
+          "start": 47.82,
+          "end": 54.22
+        }
+      ],
+      "notes": null
+    },
+    {
+      "question": "when will the COVID stop",
+      "expected_answer": "Không tìm thấy thông tin về khi nào COVID sẽ dừng lại trong context được cung cấp. Context chỉ đề cập đến tác động của COVID-19 đối với du lịch và không đưa ra dự đoán cụ thể về thời gian kết thúc đại dịch. [03:17]",
+      "ground_truth_timestamps": [
+        {
+          "start": 153.44,
+          "end": 190.98
+        },
+        {
+          "start": 119.39,
+          "end": 142.97
+        },
+        {
+          "start": 94.96,
+          "end": 118.73
+        },
+        {
+          "start": 6.74,
+          "end": 18.54
+        },
+        {
+          "start": 197.14,
+          "end": 219.28
+        },
+        {
+          "start": 47.82,
+          "end": 54.22
+        }
+      ],
+      "notes": null
+    },
+    {
+      "question": "what statistic increased",
+      "expected_answer": "The statistic that increased was visitor expenditure on food, liquor, and pharmacies compared to other types of visitor expenditure, according to the speaker's update [03:17].",
+      "ground_truth_timestamps": [
+        {
+          "start": 119.39,
+          "end": 142.97
+        },
+        {
+          "start": 94.96,
+          "end": 118.73
+        },
+        {
+          "start": 197.14,
+          "end": 219.28
+        },
+        {
+          "start": 6.74,
+          "end": 18.54
+        },
+        {
+          "start": 153.44,
+          "end": 190.98
+        },
+        {
+          "start": 54.22,
+          "end": 59.46
+        }
+      ],
+      "notes": null
+    },
+    {
+      "question": "when is the covid lockdown begin in this district",
+      "expected_answer": "Không tìm thấy thông tin về thời điểm lockdown bắt đầu do context không đề cập cụ thể về ngày lockdown tại khu vực này. Context chỉ nói đến ảnh hưởng của COVID đối với du lịch nhưng không đưa ra thời gian chính xác cho các biện pháp hạn chế.",
+      "ground_truth_timestamps": [
+        {
+          "start": 119.39,
+          "end": 142.97
+        },
+        {
+          "start": 94.96,
+          "end": 118.73
+        },
+        {
+          "start": 153.44,
+          "end": 190.98
+        },
+        {
+          "start": 6.74,
+          "end": 18.54
+        },
+        {
+          "start": 47.82,
+          "end": 54.22
+        },
+        {
+          "start": 197.14,
+          "end": 219.28
+        }
+      ],
+      "notes": null
+    },
+    {
+      "question": "where is Waipar District",
+      "expected_answer": "Context không cung cấp thông tin cụ thể về vị trí của Waipar District. Context đề cập đếnWaipar District như là một khu vực du lịch ở New Zealand đang phát triển nhanh chóng, nhưng không xác định nó nằm ở đâu trên bản đồ quốc gia này. Vì vậy, tôi phải thông báo rằng không tìm thấy thông tin về địa điểm chính xác của Waipar District từ context được cung cấp.",
+      "ground_truth_timestamps": [
+        {
+          "start": 94.96,
+          "end": 118.73
+        },
+        {
+          "start": 119.39,
+          "end": 142.97
+        },
+        {
+          "start": 153.44,
+          "end": 190.98
+        },
+        {
+          "start": 59.78,
+          "end": 65.1
+        },
+        {
+          "start": 0.0,
+          "end": 6.74
+        },
+        {
+          "start": 6.74,
+          "end": 18.54
+        }
+      ],
+      "notes": null
+    }
+  ]
+}

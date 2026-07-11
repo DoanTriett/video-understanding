@@ -45,4 +45,4 @@ postgres_data/
 #docs
 docs/
 CLAUDE.md
-tests/
+/tests/

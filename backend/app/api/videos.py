@@ -1,12 +1,14 @@
 import os
 import uuid
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from botocore.exceptions import ConnectionError as BotoConnectionError
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db import crud  # ← Postgres operations
 from app.db.session import SessionLocal
+from app.limiter import LIMIT_UPLOAD, limiter
 from app.models.video import JobStatus, VideoStatusResponse, VideoType, VideoUploadResponse
 from app.storage import download_to_path, presigned_url, upload_bytes
 from app.store import get_progress, set_progress  # ← chỉ dùng progress
@@ -26,7 +28,9 @@ def get_db():
 
 
 @router.post("/upload", response_model=VideoUploadResponse)
+@limiter.limit(LIMIT_UPLOAD)
 async def upload_video(
+    request: Request,
     file: UploadFile = File(...),
     video_type: VideoType = Form(...),
     db: Session = Depends(get_db),  # ← inject DB
@@ -48,7 +52,10 @@ async def upload_video(
 
     # Lưu file lên MinIO
     object_key = f"{video_id}/source{file_ext}"
-    upload_bytes(contents, object_key)
+    try:
+        upload_bytes(contents, object_key)
+    except BotoConnectionError as exc:
+        raise HTTPException(status_code=503, detail="Storage service unavailable") from exc
 
     # ① Tạo Video row trong Postgres — đây là source of truth
     crud.create_video(
