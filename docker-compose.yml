@@ -48,6 +48,15 @@ services:
     volumes:
       - minio_data:/data
 
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
 volumes:
   redis_data:
   qdrant_data:

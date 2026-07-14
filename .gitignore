@@ -18,7 +18,8 @@ backend/.env
 
 # Uploads và data lớn
 uploads/
-mlruns/
+/mlruns/
+/mlflow.db
 *.pt
 *.bin
 *.safetensors

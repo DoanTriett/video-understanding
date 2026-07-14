@@ -1,10 +1,16 @@
 import json
 import os
 import tempfile
+import time
 
 from app.db import crud  # ← Postgres operations
 from app.db.session import SessionLocal  # ← Postgres session
 from app.models.video import VideoType
+from app.observability.metrics import (
+    job_failures_total,
+    jobs_in_progress,
+    pipeline_stage_seconds,
+)
 from app.pipeline.lecture.pipeline import run_lecture_pipeline
 from app.pipeline.meeting.pipeline import run_meeting_pipeline
 from app.pipeline.shared.audio_extractor import extract_audio
@@ -19,6 +25,7 @@ from workers.celery_app import celery_app
 def process_video(self, video_id: str, video_type: str):
     # Mở DB session — Celery worker là process riêng, cần session riêng
     db = SessionLocal()
+    jobs_in_progress.inc()
 
     try:
         # Mỗi task download source từ MinIO về temp dir, cuối task upload artifacts lên MinIO.
@@ -32,12 +39,16 @@ def process_video(self, video_id: str, video_type: str):
             # ── Bước 1: Extract audio ──────────────────
             set_progress(video_id, stage="extracting_audio", pct=10)
             print(f"[{video_id}] Extracting audio...")
+            _t = time.perf_counter()
             audio_path = extract_audio(video_path, work_dir)
+            pipeline_stage_seconds.labels(stage="extract_audio").observe(time.perf_counter() - _t)
 
             # ── Bước 2: Transcribe ─────────────────────
             set_progress(video_id, stage="transcribing", pct=25)
             print(f"[{video_id}] Transcribing...")
+            _t = time.perf_counter()
             result = transcribe(audio_path)
+            pipeline_stage_seconds.labels(stage="transcribe").observe(time.perf_counter() - _t)
 
             transcript_path = os.path.join(work_dir, "transcript.json")
             transcript_data = {
@@ -60,6 +71,7 @@ def process_video(self, video_id: str, video_type: str):
 
             # ── Bước 3: Pipeline theo video type ───────
             set_progress(video_id, stage="running_pipeline", pct=40)
+            _t = time.perf_counter()
 
             if video_type == VideoType.MEETING:
                 print(f"[{video_id}] Running meeting pipeline...")
@@ -75,6 +87,9 @@ def process_video(self, video_id: str, video_type: str):
                     work_dir=work_dir,
                     update_progress_fn=update_progress,
                 )
+                pipeline_stage_seconds.labels(stage="meeting_pipeline").observe(
+                    time.perf_counter() - _t
+                )
             elif video_type == VideoType.LECTURE:
                 print(f"[{video_id}] Running lecture pipeline...")
 
@@ -88,17 +103,24 @@ def process_video(self, video_id: str, video_type: str):
                     work_dir=work_dir,
                     update_progress_fn=update_progress,
                 )
+                pipeline_stage_seconds.labels(stage="lecture_pipeline").observe(
+                    time.perf_counter() - _t
+                )
             else:
                 raise ValueError(f"Unsupported video_type: {video_type}")
 
             # ── Bước 4: Lưu + index chunks (dùng chung cho mọi pipeline) ──
             # ← Lưu chunks vào Postgres (thay vì chỉ lưu path file)
             set_progress(video_id, stage="saving_to_db", pct=95)
+            _t = time.perf_counter()
             crud.save_chunks(db, video_id, chunks)
+            pipeline_stage_seconds.labels(stage="save_chunks").observe(time.perf_counter() - _t)
 
             # ← Index chunks vào Qdrant để phục vụ retrieval/QA
             set_progress(video_id, stage="indexing_qdrant", pct=97)
+            _t = time.perf_counter()
             index_chunks(video_id, chunks)
+            pipeline_stage_seconds.labels(stage="index_qdrant").observe(time.perf_counter() - _t)
 
             # upload transcript json back
             upload_file(transcript_path, f"{video_id}/transcript.json")
@@ -115,16 +137,19 @@ def process_video(self, video_id: str, video_type: str):
             db.close()
             raise self.retry(exc=exc, countdown=60)
         # ImportError khác → failed thật
+        job_failures_total.inc()
         crud.update_video_status(db, video_id, status="failed", error=str(exc))
         delete_progress(video_id)
         db.close()
         raise
 
     except Exception as exc:
+        job_failures_total.inc()
         crud.update_video_status(db, video_id, status="failed", error=str(exc))
         delete_progress(video_id)
         db.close()
         raise self.retry(exc=exc, countdown=60)
 
     finally:
+        jobs_in_progress.dec()
         db.close()

@@ -1,8 +1,8 @@
-import logging
 import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -12,13 +12,12 @@ from app.api.summary import router as summary_router
 from app.api.videos import router as videos_router
 from app.limiter import limiter
 from app.middleware import RequestLoggingMiddleware
+from app.observability import metrics as _metrics  # noqa: F401 — registers custom metrics
+from app.observability.logging import configure_json_logging
 
 os.environ["SB_DISABLE_K2"] = "1"  # disable speechbrain k2
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s — %(message)s",
-)
+configure_json_logging()
 
 app = FastAPI(
     title="Video Understanding API",
@@ -47,6 +46,8 @@ app.add_middleware(RequestLoggingMiddleware)
 app.include_router(videos_router)
 app.include_router(qa_router)
 app.include_router(summary_router)
+
+Instrumentator().instrument(app).expose(app)
 
 
 @app.get("/")

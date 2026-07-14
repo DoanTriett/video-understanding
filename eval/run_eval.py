@@ -32,6 +32,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import subprocess
 import sys
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -61,6 +62,47 @@ from eval.metrics.faithfulness import judge_faithfulness  # noqa: E402
 from eval.metrics.hallucination import compute_hallucination_rate  # noqa: E402
 from eval.metrics.retrieval import compute_timestamp_overlap  # noqa: E402
 from eval.schema import AnnotationFile  # noqa: E402
+
+
+# ── MLflow helpers ────────────────────────────────────────────────────────────
+
+
+def _get_git_sha() -> str | None:
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).strip()
+    except Exception:
+        return None
+
+
+def _mlflow_tracking_uri() -> str:
+    """Always write to repo-root mlflow.db regardless of cwd."""
+    db_path = (_REPO_ROOT / "mlflow.db").resolve().as_posix()
+    return f"sqlite:///{db_path}"
+
+
+def _log_mlflow(report: dict, top_k: int) -> None:
+    """Log overall metrics and params for this eval run to MLflow."""
+    import mlflow
+
+    mlflow.set_tracking_uri(_mlflow_tracking_uri())
+    o = report["overall"]
+    with mlflow.start_run():
+        mlflow.log_param("top_k", top_k)
+        mlflow.log_param("n_pairs", o["n_pairs"])
+        mlflow.log_param("n_verified", o["n_verified"])
+        git_sha = _get_git_sha()
+        if git_sha:
+            mlflow.log_param("git_sha", git_sha)
+        if o["faithfulness_rate"] is not None:
+            mlflow.log_metric("faithfulness_rate", o["faithfulness_rate"])
+        if o["avg_hallucination_rate"] is not None:
+            mlflow.log_metric("hallucination_rate", o["avg_hallucination_rate"])
+        if o["avg_overlap"] is not None:
+            mlflow.log_metric("retrieval_overlap", o["avg_overlap"])
 
 
 # ── per-pair evaluation ───────────────────────────────────────────────────────
@@ -380,6 +422,8 @@ def run_eval(dataset_dir: Path, output_dir: Path, top_k: int) -> None:
             )
 
     report = _build_report(pair_results, annotations, top_k, run_ts)
+
+    _log_mlflow(report, top_k)
 
     json_path = output_dir / "report.json"
     md_path = output_dir / "report.md"

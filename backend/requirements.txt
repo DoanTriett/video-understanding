@@ -54,3 +54,7 @@ ollama
 
 # Rate limiting
 slowapi
+
+# Observability
+mlflow
+prometheus-fastapi-instrumentator==7.1.0
