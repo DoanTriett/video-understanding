@@ -19,12 +19,7 @@ class Settings(BaseSettings):
     max_file_size_mb: int = 500
 
     # CORS
-    cors_allow_origins: str = (
-        "http://localhost:3000," "http://127.0.0.1:3000," "https://video-understanding.vercel.app"
-    )
-    cors_allow_origin_regex: str = (
-        r"https://video-understanding-[a-z0-9-]+-doantriet2005-8192s-projects\.vercel\.app"
-    )
+    cors_origins: str = Field(default="http://localhost:3000", env="CORS_ORIGINS")
 
     # OpenAI
     openai_api_key: str = ""
