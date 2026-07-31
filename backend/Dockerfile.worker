@@ -1,10 +1,10 @@
 # syntax=docker/dockerfile:1
-# Build context must be the backend/ directory:
-#   docker build -f backend/Dockerfile.worker ./backend   (from repo root)
+# Build context must be the repository root:
+#   docker build -f backend/Dockerfile.worker .   (from repo root)
 #
-# GPU worker — faster-whisper, pyannote, CLIP run here (CUDA 12.6).
-# Image is intentionally large (~5–8 GB) due to torch+CUDA + ML deps.
-# Runtime env — inject via docker run -e / orchestrator.
+# GPU worker. faster-whisper, pyannote, and CLIP run here (CUDA 12.6).
+# Image is intentionally large due to torch+CUDA and ML dependencies.
+# Runtime env is injected by the orchestrator.
 
 FROM nvidia/cuda:12.6.0-runtime-ubuntu22.04
 
@@ -33,7 +33,7 @@ RUN apt-get update \
  && ln -sf /usr/bin/python3.11 /usr/local/bin/python3 \
  && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY backend/requirements.txt .
 
 RUN python3.11 -m pip install --no-cache-dir --upgrade pip \
  && python3.11 -m pip install --no-cache-dir \
@@ -41,6 +41,6 @@ RUN python3.11 -m pip install --no-cache-dir --upgrade pip \
       --index-url https://download.pytorch.org/whl/cu126 \
  && python3.11 -m pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY backend/. .
 
 CMD ["celery", "-A", "workers.celery_app", "worker", "--loglevel=info"]

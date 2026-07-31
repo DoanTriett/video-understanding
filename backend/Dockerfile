@@ -1,10 +1,9 @@
 # syntax=docker/dockerfile:1
-# Build context must be the backend/ directory:
-#   docker build -f backend/Dockerfile ./backend   (from repo root)
+# Build context must be the repository root:
+#   docker build -f backend/Dockerfile .   (from repo root)
 #
-# Runtime env (POSTGRES_URL, REDIS_URL, MINIO_*, etc.) — inject via docker run -e / orchestrator.
+# Runtime env (POSTGRES_URL, REDIS_URL, MINIO_*, etc.) is injected by the orchestrator.
 
-# ── Stage 1: Install Python dependencies ──────────────────────────────────────
 FROM python:3.11-slim AS builder
 
 WORKDIR /app
@@ -15,18 +14,17 @@ RUN apt-get update \
       libpq-dev \
  && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY backend/requirements.txt .
 
-# CPU-only PyTorch — API has no GPU; pipeline runs in the Celery worker image.
+# CPU-only PyTorch. The API has no GPU; pipeline work runs in the worker image.
 # Full requirements.txt is still installed because app.api.videos imports workers.tasks
-# (eager import of pipeline modules at startup).
+# and eagerly imports pipeline modules at startup.
 RUN pip install --no-cache-dir --upgrade pip \
  && pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
  && pip install --no-cache-dir -r requirements.txt \
  && pip install --no-cache-dir --force-reinstall torch \
       --index-url https://download.pytorch.org/whl/cpu
 
-# ── Stage 2: Minimal runtime ───────────────────────────────────────────────────
 FROM python:3.11-slim AS runtime
 
 WORKDIR /app
@@ -42,7 +40,7 @@ RUN apt-get update \
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-COPY . .
+COPY backend/. .
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1

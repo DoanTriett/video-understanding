@@ -24,11 +24,11 @@ jobs:
         include:
           - name: api
             image: api
-            context: ./backend
+            context: .
             dockerfile: backend/Dockerfile
           - name: worker
             image: worker
-            context: ./backend
+            context: .
             dockerfile: backend/Dockerfile.worker
           - name: frontend
             image: frontend
