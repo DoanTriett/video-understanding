@@ -1,6 +1,6 @@
-import ollama
+from openai import OpenAI
 
-from app.config import settings
+from .config import settings
 
 _QA_SYSTEM_PROMPT = (
     "Chỉ trả lời dựa trên context được cung cấp. "
@@ -10,29 +10,20 @@ _QA_SYSTEM_PROMPT = (
 )
 
 
-# qwen2.5:7b generates a full /ask answer in a few seconds on the RTX 4050 dev
-# box; 60s gives ample headroom for a cold model load or a slow context while
-# still failing fast instead of hanging the request indefinitely.
-OLLAMA_TIMEOUT_SECONDS = 60
-
-
 def call_llm(system: str, user: str) -> str:
-    """Generic single-turn LLM call via Ollama. Raises RuntimeError if unreachable or timed out."""
-    client = ollama.Client(host=settings.ollama_host, timeout=OLLAMA_TIMEOUT_SECONDS)
+    """Generic single-turn LLM call via the OpenAI API."""
+    client = OpenAI(api_key=settings.openai_api_key)
     try:
-        response = client.chat(
-            model=settings.ollama_model,
+        response = client.chat.completions.create(
+            model=settings.openai_model,
             messages=[
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
             ],
         )
     except Exception as exc:
-        raise RuntimeError(
-            f"Ollama server not reachable or timed out after {OLLAMA_TIMEOUT_SECONDS}s "
-            f"at {settings.ollama_host}. Run `ollama serve`."
-        ) from exc
-    return response.message.content  # type: ignore[return-value]
+        raise RuntimeError("OpenAI API request failed") from exc
+    return response.choices[0].message.content or ""
 
 
 def generate_answer(question: str, context: str) -> str:

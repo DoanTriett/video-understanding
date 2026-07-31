@@ -43,6 +43,13 @@ def get_clip_model():
     return _model, _processor
 
 
+def release_clip_model() -> None:
+    global _model, _processor
+    _model = None
+    _processor = None
+    torch.cuda.empty_cache()
+
+
 def embed_image(image_path: str) -> List[float]:
     """
     Tạo vector embedding cho một ảnh.

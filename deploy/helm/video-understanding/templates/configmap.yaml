@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "video-understanding.fullname" . }}-config
+  labels:
+    {{- include "video-understanding.labels" . | nindent 4 }}
+data:
+  DEBUG: {{ .Values.config.debug | quote }}
+  QDRANT_HOST: {{ .Values.config.qdrantHost | quote }}
+  QDRANT_PORT: {{ .Values.config.qdrantPort | quote }}
+  REDIS_URL: {{ .Values.config.redisUrl | quote }}
+  MINIO_ENDPOINT: {{ .Values.config.minioEndpoint | quote }}
+  MINIO_BUCKET: {{ .Values.config.minioBucket | quote }}
+  UPLOAD_DIR: {{ .Values.config.uploadDir | quote }}
+  OLLAMA_HOST: {{ .Values.config.ollamaHost | quote }}
+  OLLAMA_MODEL: {{ .Values.config.ollamaModel | quote }}
+  RATE_LIMIT_ASK: {{ .Values.config.rateLimitAsk | quote }}
+  RATE_LIMIT_UPLOAD: {{ .Values.config.rateLimitUpload | quote }}

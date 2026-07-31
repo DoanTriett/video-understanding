@@ -1,24 +1,22 @@
 """Auto-summary generation for meeting and lecture videos.
 
-Uses full transcript from Postgres (not Qdrant retrieval) — this is a
+Uses full transcript from Postgres (not Qdrant retrieval), so this is a
 full-document summary, not a RAG query.
 
-VRAM note: qwen2.5:7b-instruct-q4_K_M on RTX 4050 (6 GB).
-  ~4 GB for model weights, ~2 GB KV budget → practical input limit ≈ 8 K tokens.
-  At ~4 chars/token, transcripts are truncated at _MAX_TRANSCRIPT_CHARS (30 000 chars)
-  before being sent to the model.
+Transcripts are truncated at _MAX_TRANSCRIPT_CHARS before being sent to the
+model to keep summary generation bounded.
 """
 
 import json
 import re
 
+from openai import OpenAI
 from sqlalchemy.orm import Session
 
 from app.db import crud
 from app.db.session import SessionLocal
-from app.llm import call_llm
 
-# ── Constants ─────────────────────────────────────────────────────────────────
+from .config import settings
 
 _MAX_TRANSCRIPT_CHARS = 30_000
 
@@ -30,7 +28,7 @@ _SYSTEM_PROMPT = (
     "You are a precise summarizer. "
     "Use ONLY information explicitly present in the transcript provided. "
     "Do not infer, add, or fabricate any information not stated in the transcript. "
-    "Respond with ONLY a valid JSON object — no markdown fences, no explanation text."
+    "Respond with ONLY a valid JSON object - no markdown fences, no explanation text."
 )
 
 _MEETING_USER_TEMPLATE = """\
@@ -38,10 +36,10 @@ Transcript:
 {transcript}
 
 Summarize this meeting transcript into a JSON object with exactly these 4 keys:
-- "agenda": list of strings — topics discussed, in order of appearance
-- "decisions": list of strings — explicit decisions made during the meeting
-- "action_items": list of strings — tasks assigned or agreed upon
-- "participants": list of strings — speaker labels exactly as they appear in the transcript \
+- "agenda": list of strings - topics discussed, in order of appearance
+- "decisions": list of strings - explicit decisions made during the meeting
+- "action_items": list of strings - tasks assigned or agreed upon
+- "participants": list of strings - speaker labels exactly as they appear in the transcript \
 (e.g. "Speaker A", "SPEAKER_00"); do NOT guess or invent real names
 
 Return ONLY the JSON object. Start with '{{' and end with '}}'."""
@@ -51,9 +49,9 @@ Transcript:
 {transcript}
 
 Summarize this lecture transcript into a JSON object with exactly these 3 keys:
-- "topic_outline": list of strings — main topics covered, in order of appearance
-- "key_concepts": list of strings — important concepts, terms, or definitions introduced
-- "examples": list of strings — examples or case studies explicitly mentioned
+- "topic_outline": list of strings - main topics covered, in order of appearance
+- "key_concepts": list of strings - important concepts, terms, or definitions introduced
+- "examples": list of strings - examples or case studies explicitly mentioned
 
 Return ONLY the JSON object. Start with '{{' and end with '}}'."""
 
@@ -63,9 +61,6 @@ _RETRY_SUFFIX = (
     "No markdown fences (no ```), no preamble, no trailing text. "
     "Your entire response must start with '{' and end with '}'."
 )
-
-
-# ── Internal helpers ───────────────────────────────────────────────────────────
 
 
 def _format_transcript(chunks: list) -> str:
@@ -108,25 +103,38 @@ def _extract_json_string(text: str) -> str:
 def _parse_and_validate(raw: str, expected_keys: set[str]) -> dict:
     """Parse JSON from raw LLM text and validate required keys are present.
 
-    Raises json.JSONDecodeError or ValueError on failure — callers handle retry.
+    Raises json.JSONDecodeError or ValueError on failure; callers handle retry.
     """
     cleaned = _extract_json_string(raw)
     data = json.loads(cleaned)  # raises json.JSONDecodeError if not valid JSON
     missing = expected_keys - data.keys()
     if missing:
         raise ValueError(f"LLM response missing required keys: {missing}")
-    # Return only the expected keys — discard any extra fields the model invented.
+    # Return only the expected keys; discard any extra fields the model invented.
     return {k: data[k] for k in expected_keys}
 
 
-# ── Public API ─────────────────────────────────────────────────────────────────
+def call_llm(system: str, user: str) -> str:
+    """Generic single-turn LLM call via the OpenAI API."""
+    client = OpenAI(api_key=settings.openai_api_key)
+    try:
+        response = client.chat.completions.create(
+            model=settings.openai_model,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+        )
+    except Exception as exc:
+        raise RuntimeError("OpenAI API request failed") from exc
+    return response.choices[0].message.content or ""
 
 
 def generate_summary(video_id: str) -> dict:
     """Generate and persist an auto-summary for *video_id*.
 
     Reads all chunks from Postgres, builds a full-document prompt, calls the
-    local LLM once (with one retry on JSON parse failure), and upserts the
+    configured LLM once (with one retry on JSON parse failure), and upserts the
     result into the ``summaries`` table.
 
     Returns:
@@ -134,7 +142,7 @@ def generate_summary(video_id: str) -> dict:
 
     Raises:
         ValueError: video not found, no chunks, or unsupported video_type.
-        RuntimeError: Ollama unreachable, or JSON parse failed after retry.
+        RuntimeError: LLM unavailable, or JSON parse failed after retry.
     """
     db: Session = SessionLocal()
     try:
@@ -154,7 +162,7 @@ def generate_summary(video_id: str) -> dict:
 
         if len(transcript) > _MAX_TRANSCRIPT_CHARS:
             transcript = transcript[:_MAX_TRANSCRIPT_CHARS]
-            transcript += "\n\n[Transcript truncated — content above this line only]"
+            transcript += "\n\n[Transcript truncated - content above this line only]"
 
         if video_type == "meeting":
             user_prompt = _MEETING_USER_TEMPLATE.format(transcript=transcript)
@@ -167,12 +175,10 @@ def generate_summary(video_id: str) -> dict:
                 f"Unsupported video_type '{video_type}'. " "Expected 'meeting' or 'lecture'."
             )
 
-        # First attempt
         raw = call_llm(_SYSTEM_PROMPT, user_prompt)
         try:
             content = _parse_and_validate(raw, expected_keys)
         except (json.JSONDecodeError, ValueError):
-            # Retry with a stronger JSON-only reminder
             raw = call_llm(_SYSTEM_PROMPT, user_prompt + _RETRY_SUFFIX)
             try:
                 content = _parse_and_validate(raw, expected_keys)

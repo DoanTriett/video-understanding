@@ -40,6 +40,12 @@ def get_diarization_pipeline():
     return _pipeline
 
 
+def release_diarization_pipeline() -> None:
+    global _pipeline
+    _pipeline = None
+    torch.cuda.empty_cache()
+
+
 def diarize(audio_path: str, num_speakers: int = None) -> List[DiarizationSegment]:
     """
     Chạy speaker diarization trên file audio.

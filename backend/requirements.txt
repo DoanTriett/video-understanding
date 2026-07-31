@@ -49,8 +49,8 @@ alembic
 #MiniO
 boto3
 
-# LLM (local, via Ollama)
-ollama
+# LLM
+openai>=1.0.0
 
 # Rate limiting
 slowapi

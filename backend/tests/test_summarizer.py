@@ -195,7 +195,7 @@ LECTURE_VIDEO_ID = "fd7d6717-2a3e-4266-828e-1f99c0869724"  # lecture, 8 chunks, 
 
 
 @pytest.mark.integration
-@pytest.mark.requires_ollama
+@pytest.mark.requires_openai
 def test_generate_summary_meeting_real():
     result = generate_summary(MEETING_VIDEO_ID)
     print("\n=== MEETING SUMMARY ===")
@@ -209,7 +209,7 @@ def test_generate_summary_meeting_real():
 
 
 @pytest.mark.integration
-@pytest.mark.requires_ollama
+@pytest.mark.requires_openai
 def test_generate_summary_lecture_real():
     result = generate_summary(LECTURE_VIDEO_ID)
     print("\n=== LECTURE SUMMARY ===")
@@ -222,7 +222,7 @@ def test_generate_summary_lecture_real():
 
 
 @pytest.mark.integration
-@pytest.mark.requires_ollama
+@pytest.mark.requires_openai
 def test_summary_persisted_to_db():
     """Verify the record is actually in the summaries table after generation."""
     from app.db import crud
@@ -243,7 +243,7 @@ def test_summary_persisted_to_db():
 
 
 @pytest.mark.integration
-@pytest.mark.requires_ollama
+@pytest.mark.requires_openai
 def test_upsert_idempotent():
     """Calling generate_summary twice should not create duplicate rows."""
     from app.db.models import Summary

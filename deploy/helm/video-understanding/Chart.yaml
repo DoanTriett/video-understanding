@@ -1,0 +1,10 @@
+apiVersion: v2
+name: video-understanding
+description: >-
+  Minimal Helm chart for the Video Understanding System (api, worker, frontend).
+  Portfolio-scope K8s demo — no Ingress/TLS, no HPA, no ServiceMonitor.
+  Redis/Qdrant/Postgres/MinIO are NOT included here; reuse docker-compose for them
+  (see deploy/helm/README.md).
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

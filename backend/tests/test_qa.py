@@ -143,7 +143,7 @@ def test_cache_hit_skips_retriever_and_llm():
     mock_set_cache.assert_not_called()
 
 
-def test_ollama_down_returns_503():
+def test_openai_down_returns_503():
     fake_chunks = [
         {
             "chunk_id": "vid123_chunk_0000",
@@ -163,7 +163,7 @@ def test_ollama_down_returns_503():
         patch("app.api.qa.build_context", return_value="[00:05] Some content."),
         patch(
             "app.api.qa.generate_answer",
-            side_effect=RuntimeError("Ollama server not reachable"),
+            side_effect=RuntimeError("OpenAI API request failed"),
         ),
     ):
         resp = client.post("/videos/vid123/ask", json={"question": "anything"})

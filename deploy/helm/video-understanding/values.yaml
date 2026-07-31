@@ -1,0 +1,69 @@
+# Minimal values for local kind/minikube testing.
+# Redis/Qdrant/Postgres/MinIO are NOT deployed by this chart — they keep running
+# via the existing docker-compose.yml on the host. Default hostnames below point
+# at host.docker.internal (same pattern already used for prometheus in
+# docker-compose.yml). See deploy/helm/README.md.
+
+image:
+  registry: ghcr.io
+  repository: doantriett/video-understanding
+  # "scan" is always pushed by build.yml (type=raw,value=scan); override with a
+  # real sha/semver tag for anything beyond local smoke testing.
+  tag: scan
+  pullPolicy: IfNotPresent
+
+# Set if the GHCR packages are private (docker-registry secret name).
+imagePullSecrets: []
+
+api:
+  replicaCount: 1
+  port: 8000
+  service:
+    type: ClusterIP
+    port: 8000
+
+worker:
+  replicaCount: 1
+
+frontend:
+  replicaCount: 1
+  port: 3000
+  service:
+    type: ClusterIP
+    port: 3000
+
+# GPU worker toggle. Default false = CPU (matches Dockerfile.worker's CUDA base
+# image running fine without a GPU, just slower). When true, adds a nodeSelector
+# requiring an nvidia.com/gpu node and requests 1 GPU.
+gpu:
+  enabled: false
+
+# Non-sensitive config -> ConfigMap. Values mirror backend/.env local defaults.
+config:
+  debug: "true"
+  qdrantHost: "host.docker.internal"
+  qdrantPort: "6333"
+  redisUrl: "redis://host.docker.internal:6379/0"
+  minioEndpoint: "host.docker.internal:9000"
+  minioBucket: "videos"
+  uploadDir: "./uploads"
+  ollamaHost: "http://host.docker.internal:11434"
+  ollamaModel: "qwen2.5:7b-instruct-q4_K_M"
+  rateLimitAsk: "10/minute"
+  rateLimitUpload: "5/minute"
+
+# Sensitive config -> Secret. Defaults below are the same throwaway dev
+# credentials already committed in docker-compose.yml (postgres/minio) — NOT
+# real secrets. huggingfaceToken/openaiApiKey default empty; pass real values
+# with --set or -f a private values file, never commit them.
+secrets:
+  postgresUrl: "postgresql://vu:123@host.docker.internal:5432/videodb"
+  minioAccessKey: "minioadmin"
+  minioSecretKey: "minioadmin"
+  huggingfaceToken: ""
+  openaiApiKey: ""
+
+# Baked into the frontend image at build time by CI (NEXT_PUBLIC_API_URL is
+# inlined by Next.js) — changing this here has no runtime effect, kept only
+# for reference/documentation.
+frontendApiUrl: "http://localhost:8000"

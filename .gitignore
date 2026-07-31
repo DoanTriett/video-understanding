@@ -14,6 +14,7 @@ env/
 # Environment / secrets
 .env
 backend/.env
+backend/.env.docker
 *.env
 
 # Uploads và data lớn
@@ -35,6 +36,12 @@ Thumbs.db
 # Logs
 *.log
 logs/
+gpu_log*.csv
+
+# Runtime/test artifacts
+backend/prometheus_multiproc/
+backend/test_prom/
+tmp_test/
 
 # MinIO data
 minio_data/

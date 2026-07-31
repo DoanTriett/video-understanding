@@ -13,8 +13,8 @@ ignore_missing_imports = true
 asyncio_mode = "auto"
 testpaths = ["tests"]
 markers = [
-    "integration: tests that require real DB and Ollama (deselect with -m 'not integration')",
-    "requires_ollama: integration tests that need a local Ollama LLM (excluded from CI)",
+    "integration: tests that require real DB and OpenAI (deselect with -m 'not integration')",
+    "requires_openai: integration tests that need the OpenAI API (excluded from CI)",
 ]
 
 [tool.coverage.run]

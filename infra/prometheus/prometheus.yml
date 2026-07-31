@@ -2,8 +2,14 @@ global:
   scrape_interval: 15s
 
 scrape_configs:
-  - job_name: video-api
+  - job_name: api
     metrics_path: /metrics
     static_configs:
-      # host.docker.internal reaches the host machine from Docker Desktop on Windows/Mac
-      - targets: ["host.docker.internal:8000"]
+      - targets: ["api:8000"]
+
+  # Uncomment if the worker exposes a Prometheus metrics endpoint (e.g. via
+  # celery-prometheus-exporter or a custom /metrics server on port 9090):
+  # - job_name: worker
+  #   metrics_path: /metrics
+  #   static_configs:
+  #     - targets: ["worker:9090"]

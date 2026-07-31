@@ -1,0 +1,161 @@
+# Phase 7.3 — ML eval gate (manual trigger only).
+#
+# PREREQUISITE: This workflow requires a real Redis instance pre-populated with
+# QA pair cache data from a live pipeline run. The CI Redis service has no data,
+# so n_pairs will be 0 when triggered without providing REDIS_URL pointing at
+# real data. Pass a real REDIS_URL via the workflow input in that case.
+#
+# How to trigger:
+#   1. GitHub UI → Actions → "ML Eval" → "Run workflow"
+#   2. Fill in pr_number (optional) to receive a comment on that PR.
+#   3. Optionally override redis_url to point at a real Redis instance.
+#
+# No regression gate — metrics are reported only. Thresholds are deferred.
+
+name: ML Eval
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to post eval results as a comment (leave blank to skip)"
+        required: false
+        default: ""
+      redis_url:
+        description: "Redis URL containing cached QA pairs (default: localhost — empty in CI)"
+        required: false
+        default: "redis://localhost:6379/0"
+
+permissions:
+  contents: read
+  pull-requests: write  # needed for actions/github-script to post PR comments
+
+jobs:
+  eval:
+    name: eval
+    runs-on: ubuntu-latest
+
+    env:
+      MLFLOW_TRACKING_URI: ./mlruns
+      REDIS_URL: ${{ github.event.inputs.redis_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      # Install only the deps the eval script actually needs to avoid pulling
+      # in heavy ML packages (torch, whisper, pyannote) that would time out CI.
+      # mlflow: tracking + run query
+      # redis: read cached QA pairs from Redis
+      # pydantic / pydantic-settings: app.config import chain
+      - name: Install eval dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install mlflow redis pydantic pydantic-settings
+
+      - name: Run eval script
+        id: run_eval
+        working-directory: ${{ github.workspace }}
+        run: |
+          python -m backend.ml.eval.export_from_cache 2>&1 | tee eval_output.txt
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+        continue-on-error: true  # graceful: don't fail workflow on 0 pairs
+
+      - name: Parse metrics from MLflow
+        id: metrics
+        run: |
+          python - <<'EOF'
+          import json, os, sys
+          try:
+              import mlflow
+              client = mlflow.tracking.MlflowClient(tracking_uri="./mlruns")
+              experiments = client.search_experiments()
+              if not experiments:
+                  print("n_pairs=0")
+                  sys.exit(0)
+              # Use the most-recently-updated experiment
+              exp = sorted(experiments, key=lambda e: e.last_update_time or 0, reverse=True)[0]
+              runs = client.search_runs(
+                  experiment_ids=[exp.experiment_id],
+                  order_by=["start_time DESC"],
+                  max_results=1,
+              )
+              if not runs:
+                  print("n_pairs=0")
+                  sys.exit(0)
+              run = runs[0]
+              m = run.data.metrics
+              n_pairs = int(m.get("n_pairs", 0))
+              faithfulness       = m.get("faithfulness", None)
+              hallucination_rate = m.get("hallucination_rate", None)
+              retrieval_overlap  = m.get("retrieval_overlap", None)
+              print(f"n_pairs={n_pairs}")
+              print(f"faithfulness={faithfulness}")
+              print(f"hallucination_rate={hallucination_rate}")
+              print(f"retrieval_overlap={retrieval_overlap}")
+              # Write to GITHUB_OUTPUT
+              out = os.environ.get("GITHUB_OUTPUT", "")
+              if out:
+                  with open(out, "a") as f:
+                      f.write(f"n_pairs={n_pairs}\n")
+                      f.write(f"faithfulness={faithfulness}\n")
+                      f.write(f"hallucination_rate={hallucination_rate}\n")
+                      f.write(f"retrieval_overlap={retrieval_overlap}\n")
+          except Exception as e:
+              print(f"metrics_error={e}", file=sys.stderr)
+              # Still write n_pairs=0 so the comment step handles it gracefully
+              out = os.environ.get("GITHUB_OUTPUT", "")
+              if out:
+                  with open(out, "a") as f:
+                      f.write("n_pairs=0\n")
+          EOF
+
+      - name: Post eval results to PR
+        if: github.event.inputs.pr_number != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber   = parseInt("${{ github.event.inputs.pr_number }}");
+            const nPairs     = parseInt("${{ steps.metrics.outputs.n_pairs }}") || 0;
+            const faith      = "${{ steps.metrics.outputs.faithfulness }}";
+            const halluc     = "${{ steps.metrics.outputs.hallucination_rate }}";
+            const retrieval  = "${{ steps.metrics.outputs.retrieval_overlap }}";
+
+            let body;
+            if (nPairs === 0) {
+              body = [
+                "## ML Eval Results",
+                "",
+                "> **No cached QA pairs found — run against real Redis data.**",
+                ">",
+                "> Trigger this workflow again with a `redis_url` pointing at a",
+                "> Redis instance pre-populated by a live pipeline run.",
+              ].join("\n");
+            } else {
+              const fmt = v => (v === "None" || v === "" || v === "null") ? "—" : Number(v).toFixed(4);
+              body = [
+                "## ML Eval Results",
+                "",
+                `Evaluated on **${nPairs}** cached QA pair(s).`,
+                "",
+                "| Metric | Value |",
+                "| --- | --- |",
+                `| faithfulness | ${fmt(faith)} |`,
+                `| hallucination_rate | ${fmt(halluc)} |`,
+                `| retrieval_overlap | ${fmt(retrieval)} |`,
+                "",
+                "_No regression gate — report only. Thresholds are deferred._",
+              ].join("\n");
+            }
+
+            await github.rest.issues.createComment({
+              owner:    context.repo.owner,
+              repo:     context.repo.repo,
+              issue_number: prNumber,
+              body,
+            });
