@@ -82,6 +82,21 @@ def test_upload_rejects_bad_extension(client_and_mocks):
     mocks["celery_app"].send_task.assert_not_called()
 
 
+def test_upload_cors_allows_production_vercel_origin(client_and_mocks):
+    client, _ = client_and_mocks
+
+    resp = client.options(
+        "/videos/upload",
+        headers={
+            "Origin": "https://video-understanding.vercel.app",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+
+    assert resp.status_code == 200
+    assert resp.headers["access-control-allow-origin"] == ("https://video-understanding.vercel.app")
+
+
 def test_status_in_progress_reads_redis(client_and_mocks):
     client, mocks = client_and_mocks
     mocks["get_progress"].return_value = {"stage": "transcribing", "pct": 25}

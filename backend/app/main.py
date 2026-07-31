@@ -43,6 +43,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from app.api.qa import router as qa_router
 from app.api.summary import router as summary_router
 from app.api.videos import router as videos_router
+from app.config import settings
 from app.limiter import limiter
 from app.middleware import RequestLoggingMiddleware
 from app.observability import metrics as _metrics  # noqa: F401 - registers custom metrics
@@ -51,6 +52,10 @@ from app.observability.logging import configure_json_logging
 os.environ["SB_DISABLE_K2"] = "1"  # disable speechbrain k2
 
 configure_json_logging()
+
+cors_allow_origins = [
+    origin.strip() for origin in settings.cors_allow_origins.split(",") if origin.strip()
+]
 
 app = FastAPI(
     title="Video Understanding API",
@@ -64,11 +69,12 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
-# CORS for the local frontend.
+# CORS for local dev, production Vercel, and Vercel preview deployments.
 # Must be added after SlowAPIMiddleware so CORS headers are present on 429 responses too.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=cors_allow_origins,
+    allow_origin_regex=settings.cors_allow_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

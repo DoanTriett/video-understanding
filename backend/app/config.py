@@ -18,6 +18,14 @@ class Settings(BaseSettings):
     upload_dir: str = "./uploads"
     max_file_size_mb: int = 500
 
+    # CORS
+    cors_allow_origins: str = (
+        "http://localhost:3000," "http://127.0.0.1:3000," "https://video-understanding.vercel.app"
+    )
+    cors_allow_origin_regex: str = (
+        r"https://video-understanding-[a-z0-9-]+-doantriet2005-8192s-projects\.vercel\.app"
+    )
+
     # OpenAI
     openai_api_key: str = ""
     openai_model: str = "gpt-4.1-mini"
