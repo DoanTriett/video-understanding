@@ -25,7 +25,7 @@ def client_and_mocks():
             "upload_bytes": stack.enter_context(patch("app.api.videos.upload_bytes")),
             "set_progress": stack.enter_context(patch("app.api.videos.set_progress")),
             "get_progress": stack.enter_context(patch("app.api.videos.get_progress")),
-            "process_video": stack.enter_context(patch("app.api.videos.process_video")),
+            "celery_app": stack.enter_context(patch("app.api.videos.celery_app")),
             "crud": stack.enter_context(patch("app.api.videos.crud")),
         }
         with TestClient(app) as client:
@@ -51,7 +51,9 @@ def test_upload_returns_pending_and_enqueues_job(client_and_mocks):
 
     # File được đẩy lên MinIO và job gửi cho Celery đúng video_type.
     mocks["upload_bytes"].assert_called_once()
-    mocks["process_video"].delay.assert_called_once_with(data["video_id"], "lecture")
+    mocks["celery_app"].send_task.assert_called_once_with(
+        "workers.tasks.process_video", args=[data["video_id"], "lecture"]
+    )
     mocks["crud"].create_video.assert_called_once()
 
 
@@ -64,7 +66,7 @@ def test_upload_missing_video_type_returns_422(client_and_mocks):
     )
 
     assert resp.status_code == 422
-    mocks["process_video"].delay.assert_not_called()
+    mocks["celery_app"].send_task.assert_not_called()
 
 
 def test_upload_rejects_bad_extension(client_and_mocks):
@@ -77,7 +79,7 @@ def test_upload_rejects_bad_extension(client_and_mocks):
     )
 
     assert resp.status_code == 400
-    mocks["process_video"].delay.assert_not_called()
+    mocks["celery_app"].send_task.assert_not_called()
 
 
 def test_status_in_progress_reads_redis(client_and_mocks):

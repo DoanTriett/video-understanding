@@ -58,7 +58,7 @@ def _run_upload_ask_flow(video_ids: list[str]) -> str:
     """Execute one full upload → pipeline mock → ask cycle. Returns video_id."""
     with (
         patch("app.api.videos.upload_bytes") as mock_upload,
-        patch("app.api.videos.process_video") as mock_task,
+        patch("app.api.videos.celery_app") as mock_celery_app,
         patch("app.api.qa.get_cached_answer", return_value=None),
         patch("app.api.qa.set_cached_answer"),
         patch("app.pipeline.shared.retriever.embed_text", side_effect=_mock_embed_text),
@@ -67,7 +67,11 @@ def _run_upload_ask_flow(video_ids: list[str]) -> str:
             return_value="The team discussed the Q3 budget roadmap at [00:10].",
         ),
     ):
-        mock_task.delay.side_effect = _simulate_pipeline
+
+        def _send_task(_task_name, args):
+            _simulate_pipeline(*args)
+
+        mock_celery_app.send_task.side_effect = _send_task
 
         with TestClient(app) as client:
             upload_resp = client.post(
@@ -80,7 +84,9 @@ def _run_upload_ask_flow(video_ids: list[str]) -> str:
             video_ids.append(video_id)
 
             mock_upload.assert_called_once()
-            mock_task.delay.assert_called_once_with(video_id, "meeting")
+            mock_celery_app.send_task.assert_called_once_with(
+                "workers.tasks.process_video", args=[video_id, "meeting"]
+            )
 
             db = SessionLocal()
             try:

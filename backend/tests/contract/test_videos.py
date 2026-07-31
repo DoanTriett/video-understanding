@@ -26,7 +26,9 @@ def test_upload_happy_path(client_and_mocks):
 
     mocks["upload_bytes"].assert_called_once()
     mocks["set_progress"].assert_called_once()
-    mocks["process_video"].delay.assert_called_once_with(data["video_id"], "lecture")
+    mocks["celery_app"].send_task.assert_called_once_with(
+        "workers.tasks.process_video", args=[data["video_id"], "lecture"]
+    )
     mocks["crud"].create_video.assert_called_once()
     mocks["crud"].set_video_object_key.assert_called_once()
 
@@ -40,7 +42,7 @@ def test_upload_missing_video_type_returns_422(client_and_mocks):
     )
 
     assert resp.status_code == 422
-    mocks["process_video"].delay.assert_not_called()
+    mocks["celery_app"].send_task.assert_not_called()
 
 
 def test_upload_rejects_bad_extension(client_and_mocks):

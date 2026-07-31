@@ -1,24 +1,27 @@
+import json
 import os
+import tempfile
 import uuid
 
+from botocore.exceptions import ClientError
 from botocore.exceptions import ConnectionError as BotoConnectionError
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.db import crud  # ← Postgres operations
+from app.db import crud
 from app.db.session import SessionLocal
 from app.limiter import LIMIT_UPLOAD, limiter
 from app.models.video import JobStatus, VideoStatusResponse, VideoType, VideoUploadResponse
 from app.storage import download_to_path, presigned_url, upload_bytes
-from app.store import get_progress, set_progress  # ← chỉ dùng progress
-from workers.tasks import process_video
+from app.store import get_progress, set_progress
+from workers.celery_app import celery_app
 
 router = APIRouter(prefix="/videos", tags=["videos"])
 ALLOWED_EXTENSIONS = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
+PROCESS_VIDEO_TASK = "workers.tasks.process_video"
 
 
-# Dependency để inject DB session vào endpoint
 def get_db():
     db = SessionLocal()
     try:
@@ -33,14 +36,12 @@ async def upload_video(
     request: Request,
     file: UploadFile = File(...),
     video_type: VideoType = Form(...),
-    db: Session = Depends(get_db),  # ← inject DB
+    db: Session = Depends(get_db),
 ):
-    # Validate extension
     file_ext = os.path.splitext(file.filename)[1].lower()
     if file_ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail="File type not allowed.")
 
-    # Validate size
     contents = await file.read()
     file_size_mb = len(contents) / (1024 * 1024)
     if file_size_mb > settings.max_file_size_mb:
@@ -49,15 +50,12 @@ async def upload_video(
         )
 
     video_id = str(uuid.uuid4())
-
-    # Lưu file lên MinIO
     object_key = f"{video_id}/source{file_ext}"
     try:
         upload_bytes(contents, object_key)
     except BotoConnectionError as exc:
         raise HTTPException(status_code=503, detail="Storage service unavailable") from exc
 
-    # ① Tạo Video row trong Postgres — đây là source of truth
     crud.create_video(
         db=db,
         video_id=video_id,
@@ -66,11 +64,8 @@ async def upload_video(
     )
     crud.set_video_object_key(db, video_id, object_key)
 
-    # ② Set Redis progress key — để Celery task update real-time
     set_progress(video_id, stage="queued", pct=0)
-
-    # ③ Gửi job cho Celery — worker sẽ download source từ MinIO bằng object_key trong DB
-    process_video.delay(video_id, video_type.value)
+    celery_app.send_task(PROCESS_VIDEO_TASK, args=[video_id, video_type.value])
 
     return VideoUploadResponse(
         video_id=video_id,
@@ -83,7 +78,6 @@ async def upload_video(
 
 @router.get("/{video_id}/status", response_model=VideoStatusResponse)
 def get_video_status(video_id: str, db: Session = Depends(get_db)):
-    # ① Kiểm tra Redis trước
     progress = get_progress(video_id)
     if progress:
         video = crud.get_video(db, video_id)
@@ -94,12 +88,11 @@ def get_video_status(video_id: str, db: Session = Depends(get_db)):
             filename=video.filename,
             status=JobStatus.PROCESSING,
             progress_percent=progress["pct"],
-            video_type=video.video_type,  # ← THÊM DÒNG NÀY
+            video_type=video.video_type,
             error_message=None,
             created_at=video.created_at,
         )
 
-    # ② Fallback Postgres
     video = crud.get_video(db, video_id)
     if not video:
         raise HTTPException(status_code=404, detail="Video not found")
@@ -109,7 +102,7 @@ def get_video_status(video_id: str, db: Session = Depends(get_db)):
         filename=video.filename,
         status=JobStatus(video.status),
         progress_percent=video.progress,
-        video_type=video.video_type,  # ← THÊM DÒNG NÀY
+        video_type=video.video_type,
         error_message=video.error,
         created_at=video.created_at,
     )
@@ -117,11 +110,6 @@ def get_video_status(video_id: str, db: Session = Depends(get_db)):
 
 @router.get("/{video_id}/transcript")
 def get_transcript(video_id: str, db: Session = Depends(get_db)):
-    import json
-    import tempfile
-
-    from botocore.exceptions import ClientError
-
     video = crud.get_video(db, video_id)
     if not video:
         raise HTTPException(status_code=404, detail="Video not found")
@@ -137,7 +125,6 @@ def get_transcript(video_id: str, db: Session = Depends(get_db)):
             error_code = exc.response.get("Error", {}).get("Code", "")
             if error_code in ("404", "NoSuchKey"):
                 raise HTTPException(status_code=404, detail="Transcript file not found")
-            # Any other ClientError (auth, bucket missing, etc.) → let it surface as 500
             raise
 
         with open(local_path, "r", encoding="utf-8") as f:
@@ -152,7 +139,6 @@ def get_chunks(video_id: str, db: Session = Depends(get_db)):
     if video.status != "done":
         raise HTTPException(status_code=400, detail=f"Not ready: {video.status}")
 
-    # ← Đọc từ Postgres thay vì file local
     chunks = crud.get_chunks(db, video_id)
     return {
         "video_id": video_id,

@@ -48,7 +48,7 @@ def client_and_mocks():
             ),
             "set_progress": stack.enter_context(patch("app.api.videos.set_progress")),
             "get_progress": stack.enter_context(patch("app.api.videos.get_progress")),
-            "process_video": stack.enter_context(patch("app.api.videos.process_video")),
+            "celery_app": stack.enter_context(patch("app.api.videos.celery_app")),
             "crud": stack.enter_context(patch("app.api.videos.crud")),
         }
         with TestClient(app) as client:
