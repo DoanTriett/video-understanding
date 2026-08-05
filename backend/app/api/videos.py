@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import tempfile
 import uuid
@@ -17,6 +18,8 @@ from app.models.video import JobStatus, VideoStatusResponse, VideoType, VideoUpl
 from app.storage import download_to_path, presigned_url, upload_bytes
 from app.store import get_progress, set_progress
 from workers.celery_app import celery_app
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/videos", tags=["videos"])
 ALLOWED_EXTENSIONS = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
@@ -42,6 +45,18 @@ async def upload_video(
     file_ext = os.path.splitext(file.filename or "")[1].lower()
     if file_ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail="File type not allowed.")
+
+    logger.info("DEBUG s3_bucket=%r", settings.s3_bucket)
+    logger.info(
+        "DEBUG aws_key_id=%r",
+        settings.aws_access_key_id[:8] if settings.aws_access_key_id else "EMPTY",
+    )
+    logger.info("DEBUG aws_region=%r", settings.aws_region)
+    logger.info("DEBUG qdrant_host=%r", settings.qdrant_host)
+    logger.info("DEBUG redis_url=%r", settings.redis_url[:20] if settings.redis_url else "EMPTY")
+    logger.info(
+        "DEBUG postgres_url=%r", settings.POSTGRES_URL[:30] if settings.POSTGRES_URL else "EMPTY"
+    )
 
     contents = await file.read()
     file_size_mb = len(contents) / (1024 * 1024)
