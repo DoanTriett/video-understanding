@@ -97,6 +97,21 @@ def test_upload_cors_allows_production_vercel_origin(client_and_mocks):
     assert resp.headers["access-control-allow-origin"] == ("https://video-understanding.vercel.app")
 
 
+def test_unhandled_error_still_returns_cors_headers(client_and_mocks):
+    """Regression: plain 500 without ACAO is reported by browsers as a CORS failure."""
+    client, mocks = client_and_mocks
+    mocks["crud"].get_video.side_effect = RuntimeError("simulated db outage")
+
+    resp = client.get(
+        "/videos/abc-123/status",
+        headers={"Origin": "https://video-understanding.vercel.app"},
+    )
+
+    assert resp.status_code == 500
+    assert resp.headers["access-control-allow-origin"] == ("https://video-understanding.vercel.app")
+    assert "detail" in resp.json()
+
+
 def test_status_in_progress_reads_redis(client_and_mocks):
     client, mocks = client_and_mocks
     mocks["get_progress"].return_value = {"stage": "transcribing", "pct": 25}

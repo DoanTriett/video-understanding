@@ -15,6 +15,7 @@ env/
 .env
 backend/.env
 backend/.env.docker
+backend/.env.worker
 *.env
 
 # Uploads và data lớn

@@ -3,9 +3,10 @@ import os
 import tempfile
 import uuid
 
-from botocore.exceptions import ClientError
-from botocore.exceptions import ConnectionError as BotoConnectionError
+from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from redis.exceptions import RedisError
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -38,7 +39,7 @@ async def upload_video(
     video_type: VideoType = Form(...),
     db: Session = Depends(get_db),
 ):
-    file_ext = os.path.splitext(file.filename)[1].lower()
+    file_ext = os.path.splitext(file.filename or "")[1].lower()
     if file_ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail="File type not allowed.")
 
@@ -53,23 +54,29 @@ async def upload_video(
     object_key = f"{video_id}/source{file_ext}"
     try:
         upload_bytes(contents, object_key)
-    except BotoConnectionError as exc:
+    except (BotoCoreError, ClientError) as exc:
         raise HTTPException(status_code=503, detail="Storage service unavailable") from exc
 
-    crud.create_video(
-        db=db,
-        video_id=video_id,
-        filename=file.filename,
-        video_type=video_type.value,
-    )
-    crud.set_video_object_key(db, video_id, object_key)
+    try:
+        crud.create_video(
+            db=db,
+            video_id=video_id,
+            filename=file.filename or f"upload{file_ext}",
+            video_type=video_type.value,
+        )
+        crud.set_video_object_key(db, video_id, object_key)
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="Database unavailable") from exc
 
-    set_progress(video_id, stage="queued", pct=0)
-    celery_app.send_task(PROCESS_VIDEO_TASK, args=[video_id, video_type.value])
+    try:
+        set_progress(video_id, stage="queued", pct=0)
+        celery_app.send_task(PROCESS_VIDEO_TASK, args=[video_id, video_type.value])
+    except (RedisError, OSError, ConnectionError) as exc:
+        raise HTTPException(status_code=503, detail="Job queue unavailable") from exc
 
     return VideoUploadResponse(
         video_id=video_id,
-        filename=file.filename,
+        filename=file.filename or f"upload{file_ext}",
         file_size_mb=round(file_size_mb, 2),
         status=JobStatus.PENDING,
         message="Video uploaded. Processing started.",
@@ -78,22 +85,30 @@ async def upload_video(
 
 @router.get("/{video_id}/status", response_model=VideoStatusResponse)
 def get_video_status(video_id: str, db: Session = Depends(get_db)):
-    progress = get_progress(video_id)
-    if progress:
-        video = crud.get_video(db, video_id)
-        if not video:
-            raise HTTPException(status_code=404, detail="Video not found")
-        return VideoStatusResponse(
-            video_id=video_id,
-            filename=video.filename,
-            status=JobStatus.PROCESSING,
-            progress_percent=progress["pct"],
-            video_type=video.video_type,
-            error_message=None,
-            created_at=video.created_at,
-        )
+    try:
+        progress = get_progress(video_id)
+    except RedisError:
+        progress = None
 
-    video = crud.get_video(db, video_id)
+    try:
+        if progress:
+            video = crud.get_video(db, video_id)
+            if not video:
+                raise HTTPException(status_code=404, detail="Video not found")
+            return VideoStatusResponse(
+                video_id=video_id,
+                filename=video.filename,
+                status=JobStatus.PROCESSING,
+                progress_percent=progress["pct"],
+                video_type=video.video_type,
+                error_message=None,
+                created_at=video.created_at,
+            )
+
+        video = crud.get_video(db, video_id)
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="Database unavailable") from exc
+
     if not video:
         raise HTTPException(status_code=404, detail="Video not found")
 

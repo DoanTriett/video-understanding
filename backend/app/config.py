@@ -18,8 +18,21 @@ class Settings(BaseSettings):
     upload_dir: str = "./uploads"
     max_file_size_mb: int = 500
 
-    # CORS
-    cors_origins: str = Field(default="http://localhost:3000", env="CORS_ORIGINS")
+    # CORS — comma-separated exact origins + optional regex for Vercel previews.
+    cors_origins: str = Field(
+        default=(
+            "http://localhost:3000,"
+            "http://127.0.0.1:3000,"
+            "https://video-understanding.vercel.app"
+        ),
+        env="CORS_ORIGINS",
+    )
+    cors_allow_origin_regex: str = Field(
+        default=(
+            r"https://video-understanding-[a-z0-9-]+" r"-doantriet2005-8192s-projects\.vercel\.app"
+        ),
+        env="CORS_ALLOW_ORIGIN_REGEX",
+    )
 
     # OpenAI
     openai_api_key: str = ""
@@ -28,15 +41,26 @@ class Settings(BaseSettings):
     # Hugging Face
     huggingface_token: str = Field(default="", env="HUGGINGFACE_TOKEN")
 
-    # PostgreSQL
+    # PostgreSQL (Neon often issues postgres:// — normalized below)
     POSTGRES_URL: str = Field(default="", env="POSTGRES_URL")
 
     device: str = "cuda"
 
+    @field_validator("POSTGRES_URL", mode="before")
+    @classmethod
+    def _normalize_postgres_url(cls, value: object) -> object:
+        if isinstance(value, str) and value.startswith("postgres://"):
+            return "postgresql://" + value[len("postgres://") :]
+        return value
+
+    # S3-compatible object storage.
+    # Leave MINIO_ENDPOINT empty to use real AWS S3 (boto3 default endpoints).
+    # Set to host:port or https://... for MinIO / Cloudflare R2 / etc.
     minio_endpoint: str = Field(default="", env="MINIO_ENDPOINT")
     minio_access_key: str = Field(default="", env="MINIO_ACCESS_KEY")
     minio_secret_key: str = Field(default="", env="MINIO_SECRET_KEY")
     minio_bucket: str = Field(default="videos", env="MINIO_BUCKET")
+    aws_region: str = Field(default="", env="AWS_REGION")
 
     # Rate limiting (slowapi, per IP).
     # Override via env: RATE_LIMIT_ASK="20/minute", RATE_LIMIT_UPLOAD="10/minute".

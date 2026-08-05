@@ -31,9 +31,11 @@ async def lifespan(app):
 
 
 # Now safe to import prometheus-aware modules.
-from fastapi import FastAPI
+import logging
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 from prometheus_client import CONTENT_TYPE_LATEST, CollectorRegistry, generate_latest, multiprocess
 from prometheus_fastapi_instrumentator import Instrumentator
 from slowapi import _rate_limit_exceeded_handler
@@ -52,10 +54,12 @@ from app.observability.logging import configure_json_logging
 os.environ["SB_DISABLE_K2"] = "1"  # disable speechbrain k2
 
 configure_json_logging()
+logger = logging.getLogger("app.main")
 
 cors_allow_origins = [
     origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()
 ]
+cors_allow_origin_regex = settings.cors_allow_origin_regex.strip() or None
 
 app = FastAPI(
     title="Video Understanding API",
@@ -67,20 +71,36 @@ app = FastAPI(
 # Attach slowapi limiter to app state and register the 429 handler.
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-app.add_middleware(SlowAPIMiddleware)
 
-# CORS for configured frontend origins.
-# Must be added after SlowAPIMiddleware so CORS headers are present on 429 responses too.
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Convert unhandled errors to JSON so CORSMiddleware can attach ACAO headers.
+
+    Starlette's ServerErrorMiddleware sits outside user middleware and returns a
+    plain-text 500 with no CORS headers. Browsers then report a misleading CORS
+    failure instead of the real server error (seen on Vercel → Railway uploads).
+
+    HTTPException / validation errors keep their more-specific handlers via MRO.
+    """
+    logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
+    detail = str(exc) if settings.debug else "Internal server error"
+    return JSONResponse(status_code=500, content={"detail": detail})
+
+
+# Middleware order: last added = outermost. CORS must be outermost among user
+# middleware so every response (including 4xx/5xx from ExceptionMiddleware) gets
+# Access-Control-* headers for allowed browser origins.
+app.add_middleware(SlowAPIMiddleware)
+app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_allow_origins,
+    allow_origin_regex=cors_allow_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Request logging is innermost middleware, so it sees final status codes.
-app.add_middleware(RequestLoggingMiddleware)
 
 app.include_router(videos_router)
 app.include_router(qa_router)

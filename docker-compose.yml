@@ -81,14 +81,15 @@ services:
       - redis
       - qdrant
       - minio
-    # Uncomment to enable GPU access (requires nvidia-container-toolkit):
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
+    # GPU access — requires Docker Desktop with WSL2 backend + nvidia-container-toolkit.
+    # For local GPU usage, prefer running the worker natively via start_worker.ps1 instead.
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
 
   frontend:
     build:

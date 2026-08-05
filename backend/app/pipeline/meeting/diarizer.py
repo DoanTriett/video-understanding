@@ -2,6 +2,13 @@ from dataclasses import dataclass
 from typing import List
 
 import torch
+import torchaudio
+
+# torchaudio 2.1+ removed set_audio_backend; pyannote.audio 3.x still calls it.
+# This shim makes the call a no-op so pyannote can import cleanly.
+if not hasattr(torchaudio, "set_audio_backend"):
+    torchaudio.set_audio_backend = lambda _: None  # type: ignore[attr-defined]
+
 from pyannote.audio import Pipeline
 
 from app.config import settings

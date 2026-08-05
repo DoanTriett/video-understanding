@@ -1,4 +1,5 @@
 from io import BytesIO
+from typing import Optional
 
 import boto3
 from botocore.client import Config
@@ -6,14 +7,33 @@ from botocore.client import Config
 from app.config import settings
 
 
+def _endpoint_url() -> Optional[str]:
+    """Return S3 endpoint URL, or None for real AWS S3.
+
+    - Empty MINIO_ENDPOINT  → None  (boto3 uses standard AWS endpoints)
+    - host:port             → http://host:port   (MinIO, Cloudflare R2 local, etc.)
+    - http(s)://...         → returned as-is
+    """
+    endpoint = settings.minio_endpoint.strip()
+    if not endpoint:
+        return None
+    if endpoint.startswith(("http://", "https://")):
+        return endpoint
+    return f"http://{endpoint}"
+
+
 def get_s3_client():
-    return boto3.client(
-        "s3",
-        endpoint_url=f"http://{settings.minio_endpoint}",
-        aws_access_key_id=settings.minio_access_key,
-        aws_secret_access_key=settings.minio_secret_key,
-        config=Config(signature_version="s3v4"),
-    )
+    endpoint = _endpoint_url()
+    kwargs: dict = {
+        "aws_access_key_id": settings.minio_access_key,
+        "aws_secret_access_key": settings.minio_secret_key,
+        "config": Config(signature_version="s3v4"),
+    }
+    if endpoint is not None:
+        kwargs["endpoint_url"] = endpoint
+    if settings.aws_region:
+        kwargs["region_name"] = settings.aws_region
+    return boto3.client("s3", **kwargs)
 
 
 def upload_fileobj(file_obj, object_key: str) -> None:

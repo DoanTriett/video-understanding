@@ -99,5 +99,18 @@ def test_get_s3_client_uses_boto3():
     assert client is mock_boto_client.return_value
     mock_boto_client.assert_called_once()
     call_kwargs = mock_boto_client.call_args.kwargs
-    assert call_kwargs["endpoint_url"] == f"http://{storage.settings.minio_endpoint}"
+    endpoint = storage.settings.minio_endpoint.strip()
+    expected = endpoint if endpoint.startswith(("http://", "https://")) else f"http://{endpoint}"
+    assert call_kwargs["endpoint_url"] == expected
     assert call_kwargs["aws_access_key_id"] == storage.settings.minio_access_key
+
+
+def test_get_s3_client_preserves_https_endpoint():
+    with (
+        patch.object(storage.settings, "minio_endpoint", "https://minio.example:9000"),
+        patch("app.storage.boto3.client") as mock_boto_client,
+    ):
+        mock_boto_client.return_value = MagicMock()
+        storage.get_s3_client()
+
+    assert mock_boto_client.call_args.kwargs["endpoint_url"] == "https://minio.example:9000"
