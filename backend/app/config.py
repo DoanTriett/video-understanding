@@ -1,4 +1,4 @@
-from pydantic import AliasChoices, Field, field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -53,18 +53,11 @@ class Settings(BaseSettings):
             return "postgresql://" + value[len("postgres://") :]
         return value
 
-    # S3-compatible object storage.
-    # Leave MINIO_ENDPOINT empty to use real AWS S3 (boto3 default endpoints).
-    # Set to host:port or https://... for MinIO / Cloudflare R2 / etc.
-    minio_endpoint: str = Field(default="", env="MINIO_ENDPOINT")
-    minio_access_key: str = Field(default="", env="MINIO_ACCESS_KEY")
-    minio_secret_key: str = Field(default="", env="MINIO_SECRET_KEY")
-    # Accept MINIO_BUCKET (legacy local) or S3_BUCKET (standard AWS naming).
-    minio_bucket: str = Field(
-        default="videos",
-        validation_alias=AliasChoices("MINIO_BUCKET", "S3_BUCKET"),
-    )
-    aws_region: str = Field(default="", env="AWS_REGION")
+    # AWS S3
+    aws_access_key_id: str = ""
+    aws_secret_access_key: str = ""
+    aws_region: str = "us-east-1"
+    s3_bucket: str = "video-understanding-store"
 
     # Rate limiting (slowapi, per IP).
     # Override via env: RATE_LIMIT_ASK="20/minute", RATE_LIMIT_UPLOAD="10/minute".
