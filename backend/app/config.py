@@ -1,4 +1,4 @@
-from pydantic import Field, field_validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -59,7 +59,11 @@ class Settings(BaseSettings):
     minio_endpoint: str = Field(default="", env="MINIO_ENDPOINT")
     minio_access_key: str = Field(default="", env="MINIO_ACCESS_KEY")
     minio_secret_key: str = Field(default="", env="MINIO_SECRET_KEY")
-    minio_bucket: str = Field(default="videos", env="MINIO_BUCKET")
+    # Accept MINIO_BUCKET (legacy local) or S3_BUCKET (standard AWS naming).
+    minio_bucket: str = Field(
+        default="videos",
+        validation_alias=AliasChoices("MINIO_BUCKET", "S3_BUCKET"),
+    )
     aws_region: str = Field(default="", env="AWS_REGION")
 
     # Rate limiting (slowapi, per IP).

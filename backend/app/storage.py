@@ -24,11 +24,15 @@ def _endpoint_url() -> Optional[str]:
 
 def get_s3_client():
     endpoint = _endpoint_url()
-    kwargs: dict = {
-        "aws_access_key_id": settings.minio_access_key,
-        "aws_secret_access_key": settings.minio_secret_key,
-        "config": Config(signature_version="s3v4"),
-    }
+    kwargs: dict = {"config": Config(signature_version="s3v4")}
+    # Only pass credentials explicitly when configured via MINIO_ACCESS_KEY /
+    # MINIO_SECRET_KEY. When those are empty, boto3 falls back to its standard
+    # credential chain: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY env vars,
+    # ~/.aws/credentials, IAM role, etc.
+    if settings.minio_access_key:
+        kwargs["aws_access_key_id"] = settings.minio_access_key
+    if settings.minio_secret_key:
+        kwargs["aws_secret_access_key"] = settings.minio_secret_key
     if endpoint is not None:
         kwargs["endpoint_url"] = endpoint
     if settings.aws_region:
