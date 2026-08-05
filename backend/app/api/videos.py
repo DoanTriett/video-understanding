@@ -70,6 +70,7 @@ async def upload_video(
     try:
         upload_bytes(contents, object_key)
     except (BotoCoreError, ClientError) as exc:
+        logger.error("S3 upload failed: %s", exc)
         raise HTTPException(status_code=503, detail="Storage service unavailable") from exc
 
     try:
